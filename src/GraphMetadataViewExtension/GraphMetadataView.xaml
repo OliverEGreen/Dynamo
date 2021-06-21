@@ -51,7 +51,7 @@
 
             <Style TargetType="{x:Type ListView}">
                 <Setter Property="Background"
-                        Value="Transparent" />
+                        Value="Red" />
                 <Setter Property="BorderBrush"
                     Value="Transparent" />
                 <Setter Property="Margin"
@@ -193,7 +193,16 @@
                     </TextBox.Style>
                 </TextBox>
             </HeaderedContentControl>
-            
+
+            <ListView  
+                      Margin="0px 5px"
+                      HorizontalContentAlignment="Left"
+                      Background="Transparent"
+                      BorderBrush="Transparent"
+                      ItemsSource="{Binding RequiredProperties}"
+                      BorderThickness="0">
+            </ListView>
+
             <Separator Background="{StaticResource FilterIconColor}" Margin="0,20,0,20"/>
         </StackPanel>
 

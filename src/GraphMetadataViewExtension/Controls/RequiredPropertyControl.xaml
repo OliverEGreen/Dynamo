@@ -1,0 +1,53 @@
+﻿<UserControl x:Class="Dynamo.GraphMetadata.Controls.RequiredPropertyControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:Dynamo.GraphMetadata.Controls"
+             xmlns:fa="http://schemas.fontawesome.io/icons/"
+             xmlns:ui="clr-namespace:Dynamo.UI;assembly=DynamoCoreWpf"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="200">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ui:SharedResourceDictionary Source="{x:Static ui:SharedDictionaryManager.DynamoModernDictionaryUri}" />
+                <ui:SharedResourceDictionary Source="{x:Static ui:SharedDictionaryManager.DynamoConvertersDictionaryUri}" />
+                <ui:SharedResourceDictionary Source="{x:Static ui:SharedDictionaryManager.DynamoColorsAndBrushesDictionaryUri}" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid DataContext="{Binding RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type local:RequiredPropertyControl}}}"
+          HorizontalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBox
+            Grid.Row="0"     
+            x:Name="RequiredPropertyNameTextBox"
+                 Background="Transparent"
+                 BorderBrush="Transparent"
+                 Foreground="{StaticResource NodeNameForeground}"
+                 Text="{Binding RequiredPropertyName, UpdateSourceTrigger=PropertyChanged}"
+                 IsEnabled="False"
+                 IsReadOnly="True"
+                 BorderThickness="1"
+                 Padding="-3,0"
+                 Margin="0"
+                 CaretBrush="White"/>
+        <TextBox Grid.Row="1"
+                 x:Name="RequiredPropertyValueTextBox"
+                 Background="{StaticResource SearchBoxBackgroundColor}"
+                 Foreground="{StaticResource NestedMemberTextColor}"
+                 BorderBrush="Transparent"
+                 Text="{Binding RequiredPropertyValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                 IsEnabled="True"
+                 IsReadOnly="False"
+                 BorderThickness="1"
+                 Margin="0,5"
+                 Padding="0,5"
+                 CaretBrush="White"/>
+    </Grid>
+</UserControl>

@@ -98,6 +98,10 @@ namespace Dynamo.GraphMetadata
         /// Collection of CustomProperties
         /// </summary>
         public ObservableCollection<CustomPropertyControl> CustomProperties { get; set; }
+        /// <summary>
+        /// Collection of Properties Required by this ViewExtension
+        /// </summary>
+        public ObservableCollection<RequiredPropertyControl> RequiredProperties { get; set; }
 
         public GraphMetadataViewModel(ViewLoadedParams viewLoadedParams, GraphMetadataViewExtension extension)
         {
@@ -113,6 +117,20 @@ namespace Dynamo.GraphMetadata
             this.viewLoadedParams.CurrentWorkspaceCleared += OnCurrentWorkspaceChanged;
 
             CustomProperties = new ObservableCollection<CustomPropertyControl>();
+            RequiredProperties = new ObservableCollection<RequiredPropertyControl>();
+
+            RequiredProperties.Add(new RequiredPropertyControl
+            {
+                RequiredPropertyName = "Project",
+                RequiredPropertyValue = "100 Oak Street"
+            });
+
+            RequiredProperties.Add(new RequiredPropertyControl
+            {
+                RequiredPropertyName = "Version",
+                RequiredPropertyValue = "2.3"
+            });
+
             InitializeCommands();
         }
 
