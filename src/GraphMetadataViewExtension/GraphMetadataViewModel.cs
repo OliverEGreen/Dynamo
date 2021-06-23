@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media.Imaging;
 using Dynamo.Core;
@@ -18,11 +19,15 @@ namespace Dynamo.GraphMetadata
         private readonly GraphMetadataViewExtension extension;
         private HomeWorkspaceModel currentWorkspace;
 
+        private Visibility requiredPropertiesVisibilityVisibility = Visibility.Collapsed;
+        private string requiredPropertyNameInputValue;
+
         /// <summary>
         /// Command used to add new custom properties to the CustomProperty collection
         /// </summary>
         public DelegateCommand AddCustomPropertyCommand { get; set; }
         public DelegateCommand AddRequiredPropertyCommand { get; set; }
+        public DelegateCommand DeleteRequiredPropertyCommand { get; set; }
 
         /// <summary>
         /// Description of the current workspace
@@ -97,7 +102,6 @@ namespace Dynamo.GraphMetadata
             }
         }
 
-        private Visibility requiredPropertiesVisibilityVisibility = Visibility.Collapsed;
         public Visibility RequiredPropertiesVisibility
         {
             get => requiredPropertiesVisibilityVisibility;
@@ -105,6 +109,16 @@ namespace Dynamo.GraphMetadata
             {
                 requiredPropertiesVisibilityVisibility = value;
                 RaisePropertyChanged("RequiredPropertiesVisibility");
+            }
+        }
+
+        public string RequiredPropertyNameInputValue
+        {
+            get => requiredPropertyNameInputValue;
+            set
+            {
+                requiredPropertyNameInputValue = value;
+                RaisePropertyChanged("RequiredPropertyNameInputValue");
             }
         }
 
@@ -132,19 +146,6 @@ namespace Dynamo.GraphMetadata
 
             CustomProperties = new ObservableCollection<CustomPropertyControl>();
             RequiredProperties = new ObservableCollection<RequiredProperty>();
-
-            // Dummy required properties since the UX for creating these is TBD
-            RequiredProperties.Add(new RequiredProperty
-            {
-                RequiredPropertyName = "Project",
-                RequiredPropertyValue = "100 Oak Street TEST"
-            });
-
-            RequiredProperties.Add(new RequiredProperty
-            {
-                RequiredPropertyName = "Version",
-                RequiredPropertyValue = "2.3 TEST"
-            });
 
             UpdateRequiredPropertiesVisibility();
 
@@ -231,6 +232,7 @@ namespace Dynamo.GraphMetadata
         {
             this.AddCustomPropertyCommand = new DelegateCommand(AddCustomPropertyExecute);
             this.AddRequiredPropertyCommand = new DelegateCommand(AddRequiredPropertyExecute);
+            this.DeleteRequiredPropertyCommand = new DelegateCommand(DeleteRequiredPropertyExecute);
         }
 
         private void AddCustomPropertyExecute(object obj)
@@ -259,9 +261,15 @@ namespace Dynamo.GraphMetadata
 
         private void AddRequiredPropertyExecute(object obj)
         {
-            var requiredPropertyName = $"Required Property {RequiredProperties.Count + 1}";
-            AddRequiredProperty(requiredPropertyName, "Type value here");
+            AddRequiredProperty(RequiredPropertyNameInputValue, "Type value here");
             UpdateRequiredPropertiesVisibility();
+        }
+
+        private void DeleteRequiredPropertyExecute(object obj)
+        {
+            // Dummy method, removes the last required property in the list.
+            if (RequiredProperties.Count < 1) return;
+            RequiredProperties.RemoveAt(RequiredProperties.Count - 1);
         }
 
         internal void AddRequiredProperty(string requiredPropertyName, string requiredPropertyValue)
@@ -276,6 +284,15 @@ namespace Dynamo.GraphMetadata
 
             MarkCurrentWorkspaceModified();
         }
+
+        internal void DeleteRequiredProperty(string requiredPropertyName)
+        {
+            RequiredProperty requiredProperty = GetRequiredProperty(requiredPropertyName);
+            if (requiredProperty == null) return;
+            RequiredProperties.Remove(requiredProperty);
+        }
+
+        internal RequiredProperty GetRequiredProperty(string requiredPropertyName) => RequiredProperties.FirstOrDefault(x => x.RequiredPropertyName == requiredPropertyName);
 
         private void HandlePropertyChanged(object sender, EventArgs e)
         {
