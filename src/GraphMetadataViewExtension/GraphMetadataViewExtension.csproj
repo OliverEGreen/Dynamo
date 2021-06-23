@@ -55,9 +55,7 @@
     <Compile Include="Controls\ImageSelector.xaml.cs">
       <DependentUpon>ImageSelector.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\RequiredPropertyControl.xaml.cs">
-      <DependentUpon>RequiredPropertyControl.xaml</DependentUpon>
-    </Compile>
+    <Compile Include="Models\RequiredProperty.cs" />
     <Compile Include="Converters\BooleanInverseConverter.cs" />
     <Compile Include="Converters\BooleansToVisibilityConverter.cs" />
     <Compile Include="Converters\UriToStringConverter.cs" />
@@ -114,10 +112,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Page Include="Controls\RequiredPropertyControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="GraphMetadataView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -127,6 +121,7 @@
     <Resource Include="Resources\add-thick-grey-16px.png" />
     <Resource Include="Resources\close-thick-grey-16px.png" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="AfterBuild">
     <ItemGroup>

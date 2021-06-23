@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows;
 using System.Windows.Media.Imaging;
 using Dynamo.Core;
 using Dynamo.Graph.Workspaces;
 using Dynamo.GraphMetadata.Controls;
+using Dynamo.GraphMetadata.Models;
 using Dynamo.UI.Commands;
 using Dynamo.Wpf.Extensions;
 
@@ -20,6 +22,7 @@ namespace Dynamo.GraphMetadata
         /// Command used to add new custom properties to the CustomProperty collection
         /// </summary>
         public DelegateCommand AddCustomPropertyCommand { get; set; }
+        public DelegateCommand AddRequiredPropertyCommand { get; set; }
 
         /// <summary>
         /// Description of the current workspace
@@ -94,6 +97,17 @@ namespace Dynamo.GraphMetadata
             }
         }
 
+        private Visibility requiredPropertiesVisibilityVisibility = Visibility.Collapsed;
+        public Visibility RequiredPropertiesVisibility
+        {
+            get => requiredPropertiesVisibilityVisibility;
+            set
+            {
+                requiredPropertiesVisibilityVisibility = value;
+                RaisePropertyChanged("RequiredPropertiesVisibility");
+            }
+        }
+
         /// <summary>
         /// Collection of CustomProperties
         /// </summary>
@@ -101,7 +115,7 @@ namespace Dynamo.GraphMetadata
         /// <summary>
         /// Collection of Properties Required by this ViewExtension
         /// </summary>
-        public ObservableCollection<RequiredPropertyControl> RequiredProperties { get; set; }
+        public ObservableCollection<RequiredProperty> RequiredProperties { get; set; }
 
         public GraphMetadataViewModel(ViewLoadedParams viewLoadedParams, GraphMetadataViewExtension extension)
         {
@@ -117,19 +131,22 @@ namespace Dynamo.GraphMetadata
             this.viewLoadedParams.CurrentWorkspaceCleared += OnCurrentWorkspaceChanged;
 
             CustomProperties = new ObservableCollection<CustomPropertyControl>();
-            RequiredProperties = new ObservableCollection<RequiredPropertyControl>();
+            RequiredProperties = new ObservableCollection<RequiredProperty>();
 
-            RequiredProperties.Add(new RequiredPropertyControl
+            // Dummy required properties since the UX for creating these is TBD
+            RequiredProperties.Add(new RequiredProperty
             {
                 RequiredPropertyName = "Project",
-                RequiredPropertyValue = "100 Oak Street"
+                RequiredPropertyValue = "100 Oak Street TEST"
             });
 
-            RequiredProperties.Add(new RequiredPropertyControl
+            RequiredProperties.Add(new RequiredProperty
             {
                 RequiredPropertyName = "Version",
-                RequiredPropertyValue = "2.3"
+                RequiredPropertyValue = "2.3 TEST"
             });
+
+            UpdateRequiredPropertiesVisibility();
 
             InitializeCommands();
         }
@@ -160,6 +177,15 @@ namespace Dynamo.GraphMetadata
             }
 
             CustomProperties.Clear();
+            RequiredProperties.Clear();
+        }
+
+        private void UpdateRequiredPropertiesVisibility()
+        {
+            RequiredPropertiesVisibility =
+                RequiredProperties == null || RequiredProperties.Count < 1
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
 
         private static BitmapImage ImageFromBase64(string b64string)
@@ -204,6 +230,7 @@ namespace Dynamo.GraphMetadata
         private void InitializeCommands()
         {
             this.AddCustomPropertyCommand = new DelegateCommand(AddCustomPropertyExecute);
+            this.AddRequiredPropertyCommand = new DelegateCommand(AddRequiredPropertyExecute);
         }
 
         private void AddCustomPropertyExecute(object obj)
@@ -228,6 +255,26 @@ namespace Dynamo.GraphMetadata
             {
                 MarkCurrentWorkspaceModified();
             }
+        }
+
+        private void AddRequiredPropertyExecute(object obj)
+        {
+            var requiredPropertyName = $"Required Property {RequiredProperties.Count + 1}";
+            AddRequiredProperty(requiredPropertyName, "Type value here");
+            UpdateRequiredPropertiesVisibility();
+        }
+
+        internal void AddRequiredProperty(string requiredPropertyName, string requiredPropertyValue)
+        {
+            RequiredProperty requiredProperty = new RequiredProperty
+            {
+                RequiredPropertyName = requiredPropertyName,
+                RequiredPropertyValue = requiredPropertyValue
+            };
+
+            RequiredProperties.Add(requiredProperty);
+
+            MarkCurrentWorkspaceModified();
         }
 
         private void HandlePropertyChanged(object sender, EventArgs e)
