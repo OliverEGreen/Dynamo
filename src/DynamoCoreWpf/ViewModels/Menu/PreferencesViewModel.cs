@@ -7,11 +7,17 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
+using DesignScript.Builtin;
+using Dynamo.Annotations;
 using Dynamo.Configuration;
+using Dynamo.Core;
 using Dynamo.Graph.Workspaces;
 using Dynamo.Logging;
 using Dynamo.Models;
 using Dynamo.PackageManager;
+using Dynamo.UI.Commands;
 using Dynamo.Wpf.ViewModels.Core.Converters;
 using Res = Dynamo.Wpf.Properties.Resources;
 
@@ -687,6 +693,25 @@ namespace Dynamo.ViewModels
         /// </summary>
         public PackagePathViewModel PackagePathsViewModel { get; set; }
 
+
+        private ObservableCollection<RequiredPropertyKey> requiredPropertyKeys;
+
+        /// <summary>
+        /// The collection of all RequiredProperties found in the DynamoSettings XML file
+        /// </summary>
+        public ObservableCollection<RequiredPropertyKey> RequiredPropertyKeys
+        {
+            get => requiredPropertyKeys;
+            set
+            {
+                requiredPropertyKeys = value;
+                RaisePropertyChanged(nameof(RequiredPropertyKeys));
+            }
+        }
+
+        public AddRequiredPropertyCommand AddRequiredPropertyCommand { get; }
+        public DeleteRequiredPropertyCommand DeleteRequiredPropertyCommand { get; }
+        
         /// <summary>
         /// The PreferencesViewModel constructor basically initialize all the ItemsSource for the corresponding ComboBox in the View (PreferencesView.xaml)
         /// </summary>
@@ -776,6 +801,11 @@ namespace Dynamo.ViewModels
             PackagePathsViewModel = new PackagePathViewModel(packageLoader, loadPackagesParams, customNodeManager);
 
             this.PropertyChanged += Model_PropertyChanged;
+
+            this.RequiredPropertyKeys = new ObservableCollection<RequiredPropertyKey>();
+
+            this.AddRequiredPropertyCommand = new AddRequiredPropertyCommand(this);
+            this.DeleteRequiredPropertyCommand = new DeleteRequiredPropertyCommand(this);
         }
 
         /// <summary>
@@ -1023,6 +1053,71 @@ namespace Dynamo.ViewModels
                 {
                     expanderActive = string.Empty;
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Adds a required property to the viewmodel
+    /// </summary>
+    public class AddRequiredPropertyCommand : ICommand
+    {
+        public PreferencesViewModel PreferencesViewModel { get; }
+        public AddRequiredPropertyCommand(PreferencesViewModel preferencesViewModel)
+        {
+            PreferencesViewModel = preferencesViewModel;
+        }
+        public bool CanExecute(object parameter) => true;
+        
+        public void Execute(object parameter)
+        {
+            PreferencesViewModel.RequiredPropertyKeys.Add(new RequiredPropertyKey { PropertyKey = "Test" });
+        }
+
+        public event EventHandler CanExecuteChanged
+        {
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
+        }
+    }
+
+    public class DeleteRequiredPropertyCommand : ICommand
+    {
+        public PreferencesViewModel PreferencesViewModel { get; }
+        public DeleteRequiredPropertyCommand(PreferencesViewModel preferencesViewModel)
+        {
+            PreferencesViewModel = preferencesViewModel;
+        }
+        public bool CanExecute(object parameter) => true;
+
+        public void Execute(object parameter)
+        {
+            if (!(parameter is RequiredPropertyKey requiredPropertyKey)) return;
+            RequiredPropertyKey requiredPropertyKeyToDelete =
+                PreferencesViewModel.RequiredPropertyKeys.FirstOrDefault(x =>
+                    x.PropertyKey == requiredPropertyKey.PropertyKey);
+            if (requiredPropertyKeyToDelete == null) return;
+            PreferencesViewModel.RequiredPropertyKeys.Remove(requiredPropertyKeyToDelete);
+        }
+
+        public event EventHandler CanExecuteChanged
+        {
+            add => CommandManager.RequerySuggested += value;
+            remove => CommandManager.RequerySuggested -= value;
+        }
+    }
+
+    public class RequiredPropertyKey : NotificationObject
+    {
+        private string propertyKey;
+
+        public string PropertyKey
+        {
+            get => propertyKey;
+            set
+            {
+                propertyKey = value;
+                RaisePropertyChanged(nameof(PropertyKey));
             }
         }
     }

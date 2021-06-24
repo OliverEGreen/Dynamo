@@ -88,10 +88,6 @@ namespace Dynamo.GraphMetadata
             {
                 extensionData[p.PropertyName] = p.PropertyValue;
             }
-            foreach (var p in this.viewModel.RequiredProperties)
-            {
-                extensionData[p.RequiredPropertyName] = p.RequiredPropertyValue;
-            }
         }
 
 

@@ -2428,6 +2428,12 @@ Uninstall the following packages: {0}?</value>
   <data name="PreferencesPackageManagerSettingsTab" xml:space="preserve">
     <value>Package Manager</value>
   </data>
+  <data name="MetadataSettingsTab" xml:space="preserve">
+    <value>Metadata</value>
+  </data>
+  <data name="RequiredPropertiesExpanderName" xml:space="preserve">
+    <value>Required Properties</value>
+  </data>
   <data name="PackagePathAddPathButtonName" xml:space="preserve">
     <value>Add Paths</value>
   </data>

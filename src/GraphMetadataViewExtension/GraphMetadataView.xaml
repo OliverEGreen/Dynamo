@@ -216,14 +216,14 @@
                                     Grid.Row="0"     
                                     x:Name="RequiredPropertyNameTextBox"
                                     Background="Transparent"
-                                    Text="{Binding RequiredPropertyName, UpdateSourceTrigger=PropertyChanged}"
+                                    Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}"
                                     TextWrapping="Wrap"
                                     Style="{StaticResource HeaderStyle}"
                                     IsEnabled="False"
                                     Margin="0"/>
                             <TextBox Grid.Row="1"
                                      x:Name="RequiredPropertyValueTextBox"
-                                     Text="{Binding RequiredPropertyValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                     Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                                      Style="{StaticResource TextBoxStyle}"
                                      TextWrapping="Wrap"
                                      MaxLength="100"
@@ -259,7 +259,7 @@
                     <Button.Template>
                         <ControlTemplate>
                             <Image Width="16px" Height="16px"
-                                   Source="/GraphMetadataViewExtension;component/Resources/add-thick-grey-16px.png" />
+                                   Source="/../DynamoCoreWpf/UI/Images/add-thick-grey-16px.png" />
                         </ControlTemplate>
                     </Button.Template>
                 </Button>
@@ -274,9 +274,6 @@
                       ItemsSource="{Binding CustomProperties}"
                       BorderThickness="0">
             </ListView>
-            <Button Grid.Row="2" Height="30" Content="Add Property" Command="{Binding AddRequiredPropertyCommand}"/>
-            <Button Grid.Row="3" Height="30" VerticalAlignment="Top" Content="Remove Property" Command="{Binding DeleteRequiredPropertyCommand}"/>
-            <TextBox Grid.Row="4" Height="30" VerticalAlignment="Top" Text="{Binding RequiredPropertyNameInputValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"></TextBox>
         </Grid>
     </Grid>
 </UserControl>

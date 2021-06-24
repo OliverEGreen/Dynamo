@@ -1,44 +1,19 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 using Dynamo.Annotations;
 
 namespace Dynamo.GraphMetadata.Models
 {
-    /// <summary>
-    /// Used by the GraphMetadataViewExtension to create properties that appear as hard-coded options in the ViewExtension panel.
-    /// </summary>
     public class RequiredProperty : INotifyPropertyChanged
     {
-        private string requiredPropertyName;
-        private string requiredPropertyValue;
         
-        /// <summary>
-        /// Name of the required property.
-        /// </summary>
-        public string RequiredPropertyName
-        {
-            get => requiredPropertyName;
-            set
-            {
-                requiredPropertyName = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Value of the required property.
-        /// </summary>
-        public string RequiredPropertyValue
-        {
-            get => requiredPropertyValue;
-            set
-            {
-                requiredPropertyValue = value;
-                OnPropertyChanged();
-            }
-        }
-
+        
+        
         public event PropertyChangedEventHandler PropertyChanged;
 
         [NotifyPropertyChangedInvocator]
