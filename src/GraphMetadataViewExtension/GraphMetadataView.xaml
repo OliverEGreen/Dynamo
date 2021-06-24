@@ -24,7 +24,7 @@
             <convertes:UriToStringConverter x:Key="UriToStringConverter" />
             <vr:UriValidationRule x:Key="UriValidationRule"/>
 
-            <ControlTemplate x:Key="textboxErrorTemplate">
+            <ControlTemplate x:Key="TextboxErrorTemplate">
                 <StackPanel Orientation="Vertical">
                     <AdornedElementPlaceholder />
                     <TextBlock FontStyle="Italic"
@@ -51,7 +51,7 @@
 
             <Style TargetType="{x:Type ListView}">
                 <Setter Property="Background"
-                        Value="Transparent" />
+                        Value="Red" />
                 <Setter Property="BorderBrush"
                     Value="Transparent" />
                 <Setter Property="Margin"
@@ -84,7 +84,7 @@
                 </Style.Triggers>
             </Style>
 
-            <Style TargetType="{x:Type TextBlock}" x:Key="headerStyle">
+            <Style TargetType="{x:Type TextBlock}" x:Key="HeaderStyle">
                 <Setter Property="FontWeight"
                         Value="Bold" />
                 <Setter Property="FontSize"
@@ -108,7 +108,7 @@
                         <DataTemplate>
                             <TextBlock Text="{Binding}"
                                        Margin="0,0,0,5"
-                                       Style="{StaticResource headerStyle}" />
+                                       Style="{StaticResource HeaderStyle}" />
 
                         </DataTemplate>
                     </Setter.Value>
@@ -129,7 +129,7 @@
 
         </ResourceDictionary>
     </UserControl.Resources>
-    
+
     <Grid Margin="10px, 10px">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -157,7 +157,7 @@
             </HeaderedContentControl>
 
             <HeaderedContentControl Header="Learn more URL">
-                <TextBox Validation.ErrorTemplate="{StaticResource ResourceKey=textboxErrorTemplate}"
+                <TextBox Validation.ErrorTemplate="{StaticResource ResourceKey=TextboxErrorTemplate}"
                          Name="UriTextBox"
                          TextWrapping="WrapWithOverflow"
                          MouseDoubleClick="TextBox_MouseDoubleClick">
@@ -193,7 +193,47 @@
                     </TextBox.Style>
                 </TextBox>
             </HeaderedContentControl>
-            
+            <ListView  
+                  x:Name="RequiredPropertyListView"  
+                  Margin="0, 5,0,0"
+                  HorizontalContentAlignment="Left"
+                  Background="Transparent"
+                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                  KeyboardNavigation.TabNavigation="Continue"
+                  BorderBrush="Transparent"
+                  Visibility="{Binding RequiredPropertiesVisibility, UpdateSourceTrigger=PropertyChanged}"
+                  ItemsSource="{Binding RequiredProperties, UpdateSourceTrigger=PropertyChanged}"
+                  BorderThickness="0">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid
+                              HorizontalAlignment="Stretch">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <TextBlock
+                                    Grid.Row="0"     
+                                    x:Name="RequiredPropertyNameTextBox"
+                                    Background="Transparent"
+                                    Text="{Binding RequiredPropertyName, UpdateSourceTrigger=PropertyChanged}"
+                                    TextWrapping="Wrap"
+                                    Style="{StaticResource HeaderStyle}"
+                                    IsEnabled="False"
+                                    Margin="0"/>
+                            <TextBox Grid.Row="1"
+                                     x:Name="RequiredPropertyValueTextBox"
+                                     Text="{Binding RequiredPropertyValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                     Style="{StaticResource TextBoxStyle}"
+                                     TextWrapping="Wrap"
+                                     MaxLength="100"
+                                     Margin="0,5"
+                                     CaretBrush="White"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
             <Separator Background="{StaticResource FilterIconColor}" Margin="0,20,0,20"/>
         </StackPanel>
 
@@ -201,6 +241,9 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid Grid.Row="0"
                   Margin="0, 5px">
@@ -210,7 +253,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0"
                            Text="Custom Properties"
-                           Style="{StaticResource headerStyle}" />
+                           Style="{StaticResource HeaderStyle}" />
                 <Button Grid.Column="1"
                         Command="{Binding AddCustomPropertyCommand}">
                     <Button.Template>
@@ -222,7 +265,8 @@
                 </Button>
             </Grid>
 
-            <ListView Grid.Row="1" 
+            <ListView x:Name="CustomPropertyListView"
+                      Grid.Row="1" 
                       Margin="0px 5px"
                       HorizontalContentAlignment="Left"
                       Background="Transparent"
@@ -230,6 +274,9 @@
                       ItemsSource="{Binding CustomProperties}"
                       BorderThickness="0">
             </ListView>
+            <Button Grid.Row="2" Height="30" Content="Add Property" Command="{Binding AddRequiredPropertyCommand}"/>
+            <Button Grid.Row="3" Height="30" VerticalAlignment="Top" Content="Remove Property" Command="{Binding DeleteRequiredPropertyCommand}"/>
+            <TextBox Grid.Row="4" Height="30" VerticalAlignment="Top" Text="{Binding RequiredPropertyNameInputValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"></TextBox>
         </Grid>
     </Grid>
 </UserControl>

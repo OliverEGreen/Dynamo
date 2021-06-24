@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
+using System.Windows;
 using System.Windows.Media.Imaging;
 using Dynamo.Core;
 using Dynamo.Graph.Workspaces;
 using Dynamo.GraphMetadata.Controls;
+using Dynamo.GraphMetadata.Models;
 using Dynamo.UI.Commands;
 using Dynamo.Wpf.Extensions;
 
@@ -16,10 +19,15 @@ namespace Dynamo.GraphMetadata
         private readonly GraphMetadataViewExtension extension;
         private HomeWorkspaceModel currentWorkspace;
 
+        private Visibility requiredPropertiesVisibilityVisibility = Visibility.Collapsed;
+        private string requiredPropertyNameInputValue;
+
         /// <summary>
         /// Command used to add new custom properties to the CustomProperty collection
         /// </summary>
         public DelegateCommand AddCustomPropertyCommand { get; set; }
+        public DelegateCommand AddRequiredPropertyCommand { get; set; }
+        public DelegateCommand DeleteRequiredPropertyCommand { get; set; }
 
         /// <summary>
         /// Description of the current workspace
@@ -94,10 +102,34 @@ namespace Dynamo.GraphMetadata
             }
         }
 
+        public Visibility RequiredPropertiesVisibility
+        {
+            get => requiredPropertiesVisibilityVisibility;
+            set
+            {
+                requiredPropertiesVisibilityVisibility = value;
+                RaisePropertyChanged("RequiredPropertiesVisibility");
+            }
+        }
+
+        public string RequiredPropertyNameInputValue
+        {
+            get => requiredPropertyNameInputValue;
+            set
+            {
+                requiredPropertyNameInputValue = value;
+                RaisePropertyChanged("RequiredPropertyNameInputValue");
+            }
+        }
+
         /// <summary>
         /// Collection of CustomProperties
         /// </summary>
         public ObservableCollection<CustomPropertyControl> CustomProperties { get; set; }
+        /// <summary>
+        /// Collection of Properties Required by this ViewExtension
+        /// </summary>
+        public ObservableCollection<RequiredProperty> RequiredProperties { get; set; }
 
         public GraphMetadataViewModel(ViewLoadedParams viewLoadedParams, GraphMetadataViewExtension extension)
         {
@@ -113,6 +145,10 @@ namespace Dynamo.GraphMetadata
             this.viewLoadedParams.CurrentWorkspaceCleared += OnCurrentWorkspaceChanged;
 
             CustomProperties = new ObservableCollection<CustomPropertyControl>();
+            RequiredProperties = new ObservableCollection<RequiredProperty>();
+
+            UpdateRequiredPropertiesVisibility();
+
             InitializeCommands();
         }
 
@@ -142,6 +178,15 @@ namespace Dynamo.GraphMetadata
             }
 
             CustomProperties.Clear();
+            RequiredProperties.Clear();
+        }
+
+        private void UpdateRequiredPropertiesVisibility()
+        {
+            RequiredPropertiesVisibility =
+                RequiredProperties == null || RequiredProperties.Count < 1
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
 
         private static BitmapImage ImageFromBase64(string b64string)
@@ -186,6 +231,8 @@ namespace Dynamo.GraphMetadata
         private void InitializeCommands()
         {
             this.AddCustomPropertyCommand = new DelegateCommand(AddCustomPropertyExecute);
+            this.AddRequiredPropertyCommand = new DelegateCommand(AddRequiredPropertyExecute);
+            this.DeleteRequiredPropertyCommand = new DelegateCommand(DeleteRequiredPropertyExecute);
         }
 
         private void AddCustomPropertyExecute(object obj)
@@ -211,6 +258,41 @@ namespace Dynamo.GraphMetadata
                 MarkCurrentWorkspaceModified();
             }
         }
+
+        private void AddRequiredPropertyExecute(object obj)
+        {
+            AddRequiredProperty(RequiredPropertyNameInputValue, "Type value here");
+            UpdateRequiredPropertiesVisibility();
+        }
+
+        private void DeleteRequiredPropertyExecute(object obj)
+        {
+            // Dummy method, removes the last required property in the list.
+            if (RequiredProperties.Count < 1) return;
+            RequiredProperties.RemoveAt(RequiredProperties.Count - 1);
+        }
+
+        internal void AddRequiredProperty(string requiredPropertyName, string requiredPropertyValue)
+        {
+            RequiredProperty requiredProperty = new RequiredProperty
+            {
+                RequiredPropertyName = requiredPropertyName,
+                RequiredPropertyValue = requiredPropertyValue
+            };
+
+            RequiredProperties.Add(requiredProperty);
+
+            MarkCurrentWorkspaceModified();
+        }
+
+        internal void DeleteRequiredProperty(string requiredPropertyName)
+        {
+            RequiredProperty requiredProperty = GetRequiredProperty(requiredPropertyName);
+            if (requiredProperty == null) return;
+            RequiredProperties.Remove(requiredProperty);
+        }
+
+        internal RequiredProperty GetRequiredProperty(string requiredPropertyName) => RequiredProperties.FirstOrDefault(x => x.RequiredPropertyName == requiredPropertyName);
 
         private void HandlePropertyChanged(object sender, EventArgs e)
         {

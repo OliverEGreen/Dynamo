@@ -70,6 +70,7 @@ namespace Dynamo.GraphMetadata
                 var valueModified = kv.Value == null ? string.Empty : kv.Value;
 
                 this.viewModel.AddCustomProperty(kv.Key, valueModified, false);
+                //this.viewModel.AddRequiredProperty(kv.Key, valueModified, false);
             }
         }
 
@@ -86,6 +87,10 @@ namespace Dynamo.GraphMetadata
             foreach (var p in this.viewModel.CustomProperties)
             {
                 extensionData[p.PropertyName] = p.PropertyValue;
+            }
+            foreach (var p in this.viewModel.RequiredProperties)
+            {
+                extensionData[p.RequiredPropertyName] = p.RequiredPropertyValue;
             }
         }
 
