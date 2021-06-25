@@ -1,25 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using Dynamo.Annotations;
+﻿using Dynamo.Core;
 
 namespace Dynamo.GraphMetadata.Models
 {
-    public class RequiredProperty : INotifyPropertyChanged
+    public class RequiredProperty : NotificationObject
     {
-        
-        
-        
-        public event PropertyChangedEventHandler PropertyChanged;
+        private string requiredPropertyKey;
+        private string requiredPropertyValue;
 
-        [NotifyPropertyChangedInvocator]
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        public string RequiredPropertyKey
         {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            get => requiredPropertyKey;
+            set
+            {
+                requiredPropertyKey = value;
+                RaisePropertyChanged(RequiredPropertyKey);
+            }
+        }
+
+        public string RequiredPropertyValue
+        {
+            get => requiredPropertyValue;
+            set
+            {
+                requiredPropertyValue = value;
+                RaisePropertyChanged(RequiredPropertyValue);
+            }
         }
     }
 }

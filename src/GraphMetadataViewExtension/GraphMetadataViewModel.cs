@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Windows;
@@ -8,6 +10,7 @@ using System.Windows.Media.Imaging;
 using Dynamo.Core;
 using Dynamo.Graph.Workspaces;
 using Dynamo.GraphMetadata.Controls;
+using Dynamo.GraphMetadata.Models;
 using Dynamo.UI.Commands;
 using Dynamo.Wpf.Extensions;
 
@@ -20,14 +23,13 @@ namespace Dynamo.GraphMetadata
         private HomeWorkspaceModel currentWorkspace;
 
         private Visibility requiredPropertiesVisibilityVisibility = Visibility.Collapsed;
-        private Dictionary<string, string> requiredProperties;
+        private ObservableCollection<RequiredProperty> requiredProperties;
 
         /// <summary>
         /// Command used to add new custom properties to the CustomProperty collection
         /// </summary>
         public DelegateCommand AddCustomPropertyCommand { get; set; }
-        public DelegateCommand AddRequiredPropertyCommand { get; set; }
-        public DelegateCommand DeleteRequiredPropertyCommand { get; set; }
+        
 
         /// <summary>
         /// Description of the current workspace
@@ -121,7 +123,7 @@ namespace Dynamo.GraphMetadata
         /// <summary>
         /// Collection of Properties Required by this ViewExtension
         /// </summary>
-        public Dictionary<string, string> RequiredProperties
+        public ObservableCollection<RequiredProperty> RequiredProperties
         {
             get => requiredProperties;
             set
@@ -145,9 +147,9 @@ namespace Dynamo.GraphMetadata
             this.viewLoadedParams.CurrentWorkspaceCleared += OnCurrentWorkspaceChanged;
 
             CustomProperties = new ObservableCollection<CustomPropertyControl>();
-            RequiredProperties = new Dictionary<string, string>();
+            RequiredProperties = new ObservableCollection<RequiredProperty>();
 
-            UpdateRequiredPropertiesVisibility();
+            RequiredProperties.CollectionChanged += UpdateRequiredPropertiesVisibility;
 
             InitializeCommands();
         }
@@ -178,10 +180,10 @@ namespace Dynamo.GraphMetadata
             }
 
             CustomProperties.Clear();
-            RequiredProperties.Clear();
+            //RequiredProperties.Clear();
         }
 
-        private void UpdateRequiredPropertiesVisibility()
+        private void UpdateRequiredPropertiesVisibility(object sender, NotifyCollectionChangedEventArgs e)
         {
             RequiredPropertiesVisibility =
                 RequiredProperties == null || RequiredProperties.Count < 1

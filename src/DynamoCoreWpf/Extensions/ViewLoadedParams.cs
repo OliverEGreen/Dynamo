@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using Dynamo.Configuration;
 using Dynamo.Controls;
 using Dynamo.Extensions;
 using Dynamo.Selection;
@@ -32,6 +33,11 @@ namespace Dynamo.Wpf.Extensions
         /// Useful if this extension will be loaded from a package, as its startup method will not be called.
         /// </summary>
         public ViewStartupParams ViewStartupParams { get; }
+
+        /// <summary>
+        /// A reference to the DynamoModel's PreferenceSettings object
+        /// </summary>
+        public PreferenceSettings PreferenceSettings { get;  }
 
         /// <summary>
         /// A reference to the background preview viewmodel for geometry selection,
@@ -76,13 +82,13 @@ namespace Dynamo.Wpf.Extensions
             }
         }
 
-        internal ViewLoadedParams(DynamoView dynamoV, DynamoViewModel dynamoVM) :
-            base(dynamoVM.Model)
+        internal ViewLoadedParams(DynamoView dynamoV, DynamoViewModel dynamoVM) : base(dynamoVM.Model)
         {
             dynamoView = dynamoV;
             dynamoViewModel = dynamoVM;
             dynamoMenu = dynamoView.titleBar.ChildOfType<Menu>();
             ViewStartupParams = new ViewStartupParams(dynamoVM);
+            PreferenceSettings = dynamoViewModel.PreferenceSettings;
             DynamoSelection.Instance.Selection.CollectionChanged += OnSelectionCollectionChanged;
         }
 

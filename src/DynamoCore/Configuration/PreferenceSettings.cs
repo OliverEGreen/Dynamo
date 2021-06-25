@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
@@ -22,6 +23,7 @@ namespace Dynamo.Configuration
         private string lastUpdateDownloadPath;
         private int maxNumRecentFiles;
         private bool isBackgroundGridVisible;
+        private ObservableCollection<string> requiredPropertyNames;
 
         #region Constants
         /// <summary>
@@ -422,6 +424,21 @@ namespace Dynamo.Configuration
         public bool ShowRunPreview { get; set; }
         #endregion
 
+
+        /// <summary>
+        /// Defined which properties are required to be set per-graph and will appear under the GraphMetaDataViewExtension
+        /// </summary>
+        public ObservableCollection<string> RequiredPropertyNames
+        {
+            get => requiredPropertyNames;
+            set
+            {
+                requiredPropertyNames = value;
+                RaisePropertyChanged(nameof(RequiredPropertyNames));
+            }
+        }
+        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="PreferenceSettings"/> class.
         /// </summary>
@@ -467,7 +484,7 @@ namespace Dynamo.Configuration
             EnableNodeAutoComplete = true;
             DefaultPythonEngine = string.Empty;
             ViewExtensionSettings = new List<ViewExtensionSettings>();
-
+            RequiredPropertyNames = new List<string>();
         }
 
         /// <summary>

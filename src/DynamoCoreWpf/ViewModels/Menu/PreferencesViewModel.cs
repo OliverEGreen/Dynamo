@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
@@ -18,6 +19,7 @@ using Dynamo.Logging;
 using Dynamo.Models;
 using Dynamo.PackageManager;
 using Dynamo.UI.Commands;
+using Dynamo.Utilities;
 using Dynamo.Wpf.ViewModels.Core.Converters;
 using Res = Dynamo.Wpf.Properties.Resources;
 
@@ -687,6 +689,21 @@ namespace Dynamo.ViewModels
             }
         }
         #endregion
+        
+        //This include all the properties that can be set on the Metadata tab
+        #region Metadata Properties
+        
+        /// <summary>
+        /// Command used to add new required properties to the RequiredProperty collection
+        /// </summary>
+        public DelegateCommand AddRequiredPropertyCommand { get; set; }
+        
+        /// <summary>
+        /// Command used to delete required properties from the RequiredProperty collection
+        /// </summary>
+        public DelegateCommand DeleteRequiredPropertyCommand { get; set; }
+        
+        #endregion
 
         /// <summary>
         /// Package Search Paths view model.
@@ -697,7 +714,7 @@ namespace Dynamo.ViewModels
         private ObservableCollection<RequiredPropertyKey> requiredPropertyKeys;
 
         /// <summary>
-        /// The collection of all RequiredProperties found in the DynamoSettings XML file
+        /// The collection of all RequiredPropertyKeys found in the DynamoSettings XML file
         /// </summary>
         public ObservableCollection<RequiredPropertyKey> RequiredPropertyKeys
         {
@@ -708,9 +725,7 @@ namespace Dynamo.ViewModels
                 RaisePropertyChanged(nameof(RequiredPropertyKeys));
             }
         }
-
-        public AddRequiredPropertyCommand AddRequiredPropertyCommand { get; }
-        public DeleteRequiredPropertyCommand DeleteRequiredPropertyCommand { get; }
+        
         
         /// <summary>
         /// The PreferencesViewModel constructor basically initialize all the ItemsSource for the corresponding ComboBox in the View (PreferencesView.xaml)
@@ -802,10 +817,12 @@ namespace Dynamo.ViewModels
 
             this.PropertyChanged += Model_PropertyChanged;
 
-            this.RequiredPropertyKeys = new ObservableCollection<RequiredPropertyKey>();
+            this.RequiredPropertyKeys = preferenceSettings.RequiredPropertyNames
+                .Select(x => new RequiredPropertyKey {PropertyKey = x}).ToObservableCollection();
+            RequiredPropertyKeys.CollectionChanged += UpdatePreferenceSettings;
 
-            this.AddRequiredPropertyCommand = new AddRequiredPropertyCommand(this);
-            this.DeleteRequiredPropertyCommand = new DeleteRequiredPropertyCommand(this);
+            this.AddRequiredPropertyCommand = new DelegateCommand(AddRequiredProperty);
+            this.DeleteRequiredPropertyCommand = new DelegateCommand(DeleteRequiredProperty);
         }
 
         /// <summary>
@@ -891,6 +908,26 @@ namespace Dynamo.ViewModels
             //Sets the last saved time in the en-US format
             SavedChangesTooltip = Res.PreferencesViewSavedChangesTooltip + DateTime.Now.ToString(@"hh:mm tt", new CultureInfo("en-US"));
         }
+        
+        /// <summary>
+        /// Updates the RequiredProperties list in the PreferenceSettings
+        /// </summary>
+        internal void UpdatePreferenceSettings(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            // Every time a change is made, we rebuild the list of strings
+            this.preferenceSettings.RequiredPropertyNames.Clear();
+            this.preferenceSettings.RequiredPropertyNames = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
+        }
+
+        /// <summary>
+        /// Updates the RequiredProperties list in the PreferenceSettings
+        /// </summary>
+        internal void UpdatePreferenceSettings(object sender, PropertyChangedEventArgs e)
+        {
+            // Every time a change is made, we rebuild the list of strings
+            this.preferenceSettings.RequiredPropertyNames.Clear();
+            this.preferenceSettings.RequiredPropertyNames = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
+        }
 
         /// <summary>
         /// This method will remove the current Style selected from the Styles list
@@ -932,6 +969,31 @@ namespace Dynamo.ViewModels
             Random r = new Random();
             Color color = Color.FromArgb(255, (byte)r.Next(), (byte)r.Next(), (byte)r.Next());
             return ColorTranslator.ToHtml(color).Replace("#", "");
+        }
+        
+        /// <summary>
+        /// Adds a RequiredProperty to the collection, triggered via the View
+        /// </summary>
+        /// <param name="obj"></param>
+        private void AddRequiredProperty(object obj)
+        {
+            var newKey = $"Required Property {RequiredPropertyKeys.Count + 1}";
+            RequiredPropertyKey newRequiredPropertyKey = new RequiredPropertyKey {PropertyKey = newKey};
+            this.RequiredPropertyKeys.Add(newRequiredPropertyKey);
+
+            newRequiredPropertyKey.PropertyChanged += UpdatePreferenceSettings;
+        }
+
+        /// <summary>
+        /// Deletes a RequiredProperty from the collection, triggered via the View
+        /// </summary>
+        /// <param name="obj"></param>
+        private void DeleteRequiredProperty(object obj)
+        {
+            if (!(obj is RequiredPropertyKey requiredPropertyKey)) return;
+            if (!RequiredPropertyKeys.Contains(requiredPropertyKey)) return;
+            int index = RequiredPropertyKeys.IndexOf(requiredPropertyKey);
+            this.RequiredPropertyKeys.RemoveAt(index);
         }
     }
 
@@ -1056,61 +1118,17 @@ namespace Dynamo.ViewModels
             }
         }
     }
-
+    
     /// <summary>
-    /// Adds a required property to the viewmodel
+    /// A simple wrapper class for a string object so we can bind TextBoxes in the view to a collection of strings.
     /// </summary>
-    public class AddRequiredPropertyCommand : ICommand
-    {
-        public PreferencesViewModel PreferencesViewModel { get; }
-        public AddRequiredPropertyCommand(PreferencesViewModel preferencesViewModel)
-        {
-            PreferencesViewModel = preferencesViewModel;
-        }
-        public bool CanExecute(object parameter) => true;
-        
-        public void Execute(object parameter)
-        {
-            PreferencesViewModel.RequiredPropertyKeys.Add(new RequiredPropertyKey { PropertyKey = "Test" });
-        }
-
-        public event EventHandler CanExecuteChanged
-        {
-            add => CommandManager.RequerySuggested += value;
-            remove => CommandManager.RequerySuggested -= value;
-        }
-    }
-
-    public class DeleteRequiredPropertyCommand : ICommand
-    {
-        public PreferencesViewModel PreferencesViewModel { get; }
-        public DeleteRequiredPropertyCommand(PreferencesViewModel preferencesViewModel)
-        {
-            PreferencesViewModel = preferencesViewModel;
-        }
-        public bool CanExecute(object parameter) => true;
-
-        public void Execute(object parameter)
-        {
-            if (!(parameter is RequiredPropertyKey requiredPropertyKey)) return;
-            RequiredPropertyKey requiredPropertyKeyToDelete =
-                PreferencesViewModel.RequiredPropertyKeys.FirstOrDefault(x =>
-                    x.PropertyKey == requiredPropertyKey.PropertyKey);
-            if (requiredPropertyKeyToDelete == null) return;
-            PreferencesViewModel.RequiredPropertyKeys.Remove(requiredPropertyKeyToDelete);
-        }
-
-        public event EventHandler CanExecuteChanged
-        {
-            add => CommandManager.RequerySuggested += value;
-            remove => CommandManager.RequerySuggested -= value;
-        }
-    }
-
     public class RequiredPropertyKey : NotificationObject
     {
         private string propertyKey;
 
+        /// <summary>
+        /// The name of the RequiredProperty
+        /// </summary>
         public string PropertyKey
         {
             get => propertyKey;

@@ -7,6 +7,9 @@ using Dynamo.GraphMetadata.Properties;
 using Dynamo.Wpf.Extensions;
 using System.Windows;
 using Dynamo.Graph.Workspaces;
+using Dynamo.GraphMetadata.Controls;
+using Dynamo.GraphMetadata.Models;
+using Dynamo.ViewModels;
 
 namespace Dynamo.GraphMetadata
 {
@@ -25,6 +28,11 @@ namespace Dynamo.GraphMetadata
         public override void Loaded(ViewLoadedParams viewLoadedParams)
         {
             if (viewLoadedParams == null) throw new ArgumentNullException(nameof(viewLoadedParams));
+            
+            // The list of RequiredProperty names as loaded in from the XML
+            List<string> requiredPropertyNames = viewLoadedParamsReference.PreferenceSettings.RequiredPropertyNames;
+
+            Dictionary<string, string> requiredPropertiesToBuild = new Dictionary<string, string>();
 
             this.viewLoadedParamsReference = viewLoadedParams;
             this.viewModel = new GraphMetadataViewModel(viewLoadedParams, this);
@@ -58,19 +66,49 @@ namespace Dynamo.GraphMetadata
         #region Storage Access implementation
 
         /// <summary>
-        /// Adds custom properties serialized in the graph to the viewModels CustomProperty collection
+        /// Adds required + custom properties serialized in the graph to the viewModels CustomProperty collection
         /// </summary>
         /// <param name="extensionData"></param>
         public void OnWorkspaceOpen(Dictionary<string, string> extensionData)
         {
-            foreach (var kv in extensionData)
+            // The list of RequiredProperty names as loaded in from the XML
+            List<string> requiredPropertyNames = viewLoadedParamsReference.PreferenceSettings.RequiredPropertyNames;
+
+            Dictionary<string, string> requiredPropertiesToBuild = new Dictionary<string, string>();
+            Dictionary<string, string> customPropertiesToBuild = new Dictionary<string, string>();
+
+            foreach (KeyValuePair<string, string> keyValuePair in extensionData)
             {
-                if (string.IsNullOrEmpty(kv.Key)) continue;
+                if (string.IsNullOrEmpty(keyValuePair.Key)) continue;
+                
+                if(requiredPropertyNames.Contains(keyValuePair.Key))
+                {
+                    // Removing any duplicates
+                    if (requiredPropertiesToBuild.ContainsKey(keyValuePair.Key)) continue;
+                    requiredPropertiesToBuild.Add(keyValuePair.Key, keyValuePair.Value);
+                }
+                else
+                {
+                    // Removing any duplicates
+                    if (customPropertiesToBuild.ContainsKey(keyValuePair.Key)) continue;
+                    customPropertiesToBuild.Add(keyValuePair.Key, keyValuePair.Value);
+                }
+            }
 
-                var valueModified = kv.Value == null ? string.Empty : kv.Value;
+            foreach (string value in viewLoadedParamsReference.PreferenceSettings.RequiredPropertyNames)
+            {
+                if (requiredPropertiesToBuild.ContainsKey(value)) continue;
+                requiredPropertiesToBuild.Add(value, "");
+            }
 
-                this.viewModel.AddCustomProperty(kv.Key, valueModified, false);
-                //this.viewModel.AddRequiredProperty(kv.Key, valueModified, false);
+            foreach (KeyValuePair<string, string> keyValuePair in requiredPropertiesToBuild)
+            {
+                this.viewModel.RequiredProperties.Add(new RequiredProperty { RequiredPropertyKey = keyValuePair.Key, RequiredPropertyValue = keyValuePair.Value });
+            }
+
+            foreach (KeyValuePair<string, string> keyValuePair in customPropertiesToBuild)
+            {
+                this.viewModel.AddCustomProperty(keyValuePair.Key, keyValuePair.Value, false);
             }
         }
 
