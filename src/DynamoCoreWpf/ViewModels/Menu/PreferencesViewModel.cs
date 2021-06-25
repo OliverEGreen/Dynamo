@@ -1,18 +1,29 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
+using DesignScript.Builtin;
+using Dynamo.Annotations;
 using Dynamo.Configuration;
+using Dynamo.Core;
 using Dynamo.Graph.Workspaces;
 using Dynamo.Logging;
 using Dynamo.Models;
 using Dynamo.PackageManager;
+using Dynamo.UI.Commands;
+using Dynamo.Utilities;
+using Dynamo.Wpf;
 using Dynamo.Wpf.ViewModels.Core.Converters;
+using Dynamo.Wpf.Views;
+using RestSharp.Extensions;
 using Res = Dynamo.Wpf.Properties.Resources;
 
 namespace Dynamo.ViewModels
@@ -523,11 +534,12 @@ namespace Dynamo.ViewModels
                 if (value != selectedPythonEngine)
                 {
                     selectedPythonEngine = value;
-                    if(value != Res.DefaultPythonEngineNone)
+                    if (value != Res.DefaultPythonEngineNone)
                     {
                         preferenceSettings.DefaultPythonEngine = value;
                     }
-                    else{
+                    else
+                    {
                         preferenceSettings.DefaultPythonEngine = string.Empty;
                     }
 
@@ -535,7 +547,7 @@ namespace Dynamo.ViewModels
                 }
             }
         }
-        
+
         /// <summary>
         /// Controls the IsChecked property in the "Hide IronPython alerts" toogle button
         /// </summary>
@@ -682,10 +694,42 @@ namespace Dynamo.ViewModels
         }
         #endregion
 
+        //This include all the properties that can be set on the Metadata tab
+        #region Metadata Properties
+
+        /// <summary>
+        /// Command used to add new required properties to the RequiredProperty collection
+        /// </summary>
+        public DelegateCommand AddRequiredPropertyCommand { get; set; }
+
+        /// <summary>
+        /// Command used to delete required properties from the RequiredProperty collection
+        /// </summary>
+        public DelegateCommand DeleteRequiredPropertyCommand { get; set; }
+
+        #endregion
+
         /// <summary>
         /// Package Search Paths view model.
         /// </summary>
         public PackagePathViewModel PackagePathsViewModel { get; set; }
+
+
+        private ObservableCollection<RequiredPropertyKey> requiredPropertyKeys;
+
+        /// <summary>
+        /// The collection of all RequiredPropertyKeys found in the DynamoSettings XML file
+        /// </summary>
+        public ObservableCollection<RequiredPropertyKey> RequiredPropertyKeys
+        {
+            get => requiredPropertyKeys;
+            set
+            {
+                requiredPropertyKeys = value;
+                RaisePropertyChanged(nameof(RequiredPropertyKeys));
+            }
+        }
+
 
         /// <summary>
         /// The PreferencesViewModel constructor basically initialize all the ItemsSource for the corresponding ComboBox in the View (PreferencesView.xaml)
@@ -704,8 +748,8 @@ namespace Dynamo.ViewModels
 
             //Sets SelectedPythonEngine.
             //If the setting is empty it corresponds to the default python engine
-            _ = preferenceSettings.DefaultPythonEngine == string.Empty ? 
-                SelectedPythonEngine = Res.DefaultPythonEngineNone : 
+            _ = preferenceSettings.DefaultPythonEngine == string.Empty ?
+                SelectedPythonEngine = Res.DefaultPythonEngineNone :
                 SelectedPythonEngine = preferenceSettings.DefaultPythonEngine;
 
             SelectedPackagePathForInstall = preferenceSettings.SelectedPackagePathForInstall;
@@ -736,7 +780,7 @@ namespace Dynamo.ViewModels
             isWarningEnabled = false;
 
             StyleItemsList = new ObservableCollection<StyleItem>();
-          
+
             //When pressing the "Add Style" button some controls will be shown with some values by default so later they can be populated by the user
             AddStyleControl = new StyleItem() { GroupName = "", HexColorString = "#" + GetRandomHexStringColor() };
 
@@ -761,8 +805,8 @@ namespace Dynamo.ViewModels
 
             preferencesTabs = new Dictionary<string, TabSettings>();
             preferencesTabs.Add("General", new TabSettings() { Name = "General", ExpanderActive = string.Empty });
-            preferencesTabs.Add("Features",new TabSettings() { Name = "Features", ExpanderActive = string.Empty });
-            preferencesTabs.Add("VisualSettings",new TabSettings() { Name = "VisualSettings", ExpanderActive = string.Empty });
+            preferencesTabs.Add("Features", new TabSettings() { Name = "Features", ExpanderActive = string.Empty });
+            preferencesTabs.Add("VisualSettings", new TabSettings() { Name = "VisualSettings", ExpanderActive = string.Empty });
             preferencesTabs.Add("Package Manager", new TabSettings() { Name = "Package Manager", ExpanderActive = string.Empty });
 
             //create a packagePathsViewModel we'll use to interact with the package search paths list.
@@ -772,10 +816,15 @@ namespace Dynamo.ViewModels
                 PathManager = dynamoViewModel.Model.PathManager,
             };
             var customNodeManager = dynamoViewModel.Model.CustomNodeManager;
-            var packageLoader = dynamoViewModel.Model.GetPackageManagerExtension()?.PackageLoader;            
+            var packageLoader = dynamoViewModel.Model.GetPackageManagerExtension()?.PackageLoader;
             PackagePathsViewModel = new PackagePathViewModel(packageLoader, loadPackagesParams, customNodeManager);
 
             this.PropertyChanged += Model_PropertyChanged;
+
+            InitializeRequiredPropertyKeys();
+
+            this.AddRequiredPropertyCommand = new DelegateCommand(AddRequiredPropertyKey);
+            this.DeleteRequiredPropertyCommand = new DelegateCommand(DeleteRequiredPropertyKey);
         }
 
         /// <summary>
@@ -863,6 +912,79 @@ namespace Dynamo.ViewModels
         }
 
         /// <summary>
+        /// Updates the RequiredProperties list in the PreferenceSettings
+        /// </summary>
+        internal void UpdatePreferenceSettingsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            // Comparing the UI and the saved collection
+            List<string> newRequiredPropertyKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
+            List<string> existingRequiredPropertyKeys = preferenceSettings.RequiredPropertyNames.ToList();
+
+            List<string> addedRequiredPropertyKeys = newRequiredPropertyKeys.Where(x => !existingRequiredPropertyKeys.Contains(x)).ToList();
+            List<string> removedRequiredPropertyKeys = existingRequiredPropertyKeys.Where(x => !newRequiredPropertyKeys.Contains(x)).ToList();
+
+            foreach (string addedRequiredPropertyKey in addedRequiredPropertyKeys)
+            {
+                preferenceSettings.RequiredPropertyNames.Add(addedRequiredPropertyKey);
+            }
+
+            foreach (string removedRequiredPropertyKey in removedRequiredPropertyKeys)
+            {
+                preferenceSettings.RequiredPropertyNames.Remove(removedRequiredPropertyKey);
+            }
+
+            //if (e.NewItems != null)
+            //{
+            //    foreach (RequiredPropertyKey newRequiredPropertyKey in e.NewItems)
+            //    {
+            //        preferenceSettings.RequiredPropertyNames.Add(newRequiredPropertyKey.PropertyKey);
+            //    }
+            //}
+
+            //if (e.OldItems != null)
+            //{
+            //    foreach (RequiredPropertyKey oldRequiredPropertyKey in e.OldItems)
+            //    {
+            //        preferenceSettings.RequiredPropertyNames.Remove(oldRequiredPropertyKey.PropertyKey);
+            //    }
+            //}
+        }
+
+        /// <summary>
+        /// Updates the RequiredProperties list in the PreferenceSettings
+        /// </summary>
+        internal void UpdatePreferenceSettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            // Comparing the UI and the saved collection
+            List<string> newRequiredPropertyKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
+            List<string> existingRequiredPropertyKeys = preferenceSettings.RequiredPropertyNames.ToList();
+                        
+            List<string> addedRequiredPropertyKeys = newRequiredPropertyKeys.Where(x => !existingRequiredPropertyKeys.Contains(x)).ToList();
+            List<string> removedRequiredPropertyKeys = existingRequiredPropertyKeys.Where(x => !newRequiredPropertyKeys.Contains(x)).ToList();
+
+            // This should fire every time an edit is made, so should be the case
+            if (addedRequiredPropertyKeys.Count != 1 || removedRequiredPropertyKeys.Count != 1) return;
+
+            int indexToSwapAt = existingRequiredPropertyKeys.IndexOf(removedRequiredPropertyKeys.First());
+            preferenceSettings.RequiredPropertyNames[indexToSwapAt] = addedRequiredPropertyKeys.First();
+
+            //List<string> requiredPropertyKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
+            //List<string> preferenceRequiredProperties = preferenceSettings.RequiredPropertyNames.ToList();
+
+            //foreach (string requiredPropertyKey in requiredPropertyKeys)
+            //{
+            //    preferenceSettings.RequiredPropertyNames.Add(requiredPropertyKey);
+            //};
+            //foreach (string preferenceRequiredProperty in preferenceRequiredProperties)
+            //{
+            //    if (!requiredPropertyKeys.Contains(preferenceRequiredProperty))
+            //    {
+            //        preferenceSettings.RequiredPropertyNames.Remove(preferenceRequiredProperty);
+            //    }
+            //}
+        }
+
+        /// <summary>
         /// This method will remove the current Style selected from the Styles list
         /// </summary>
         /// <param name="groupName"></param>
@@ -902,6 +1024,47 @@ namespace Dynamo.ViewModels
             Random r = new Random();
             Color color = Color.FromArgb(255, (byte)r.Next(), (byte)r.Next(), (byte)r.Next());
             return ColorTranslator.ToHtml(color).Replace("#", "");
+        }
+
+        /// <summary>
+        /// Loads the RequiredPropertyKeys from the DynamoSettings.xml file
+        /// </summary>
+        private void InitializeRequiredPropertyKeys()
+        {
+            RequiredPropertyKeys = new ObservableCollection<RequiredPropertyKey>();
+
+            foreach (string requiredPropertyName in preferenceSettings.RequiredPropertyNames)
+            {
+                RequiredPropertyKey requiredPropertyKey = new RequiredPropertyKey {PropertyKey = requiredPropertyName};
+                requiredPropertyKey.PropertyChanged += UpdatePreferenceSettingsPropertyChanged;
+                RequiredPropertyKeys.Add(requiredPropertyKey);
+            }
+            
+            RequiredPropertyKeys.CollectionChanged += UpdatePreferenceSettingsCollectionChanged;
+        }
+
+        /// <summary>
+        /// Adds a RequiredProperty to the collection, triggered via the View
+        /// </summary>
+        /// <param name="obj"></param>
+        private void AddRequiredPropertyKey(object obj)
+        {
+            var newKey = $"Required Property {RequiredPropertyKeys.Count + 1}";
+            RequiredPropertyKey requiredPropertyKey = new RequiredPropertyKey { PropertyKey = newKey };
+            requiredPropertyKey.PropertyChanged += UpdatePreferenceSettingsPropertyChanged;
+            this.RequiredPropertyKeys.Add(requiredPropertyKey);
+        }
+
+        /// <summary>
+        /// Deletes a RequiredProperty from the collection, triggered via the View
+        /// </summary>
+        /// <param name="obj"></param>
+        private void DeleteRequiredPropertyKey(object obj)
+        {
+            if (!(obj is RequiredPropertyKey requiredPropertyKey)) return;
+            if (!RequiredPropertyKeys.Contains(requiredPropertyKey)) return;
+            int index = RequiredPropertyKeys.IndexOf(requiredPropertyKey);
+            this.RequiredPropertyKeys.RemoveAt(index);
         }
     }
 
@@ -964,7 +1127,7 @@ namespace Dynamo.ViewModels
         ///   3 - Extra Large
         /// </param>
         /// <returns>The Scale Factor (-2, 0, 2, 4)</returns>
-        public static int ConvertUIToScaleFactor (int index)
+        public static int ConvertUIToScaleFactor(int index)
         {
             return (index - 1) * 2;
         }
@@ -982,7 +1145,7 @@ namespace Dynamo.ViewModels
         /// <returns>The radiobutton index (0,1,2,3)</returns>
         public static int ConvertScaleFactorToUI(int scaleValue)
         {
-           return (scaleValue / 2) + 1;
+            return (scaleValue / 2) + 1;
         }
     }
 
@@ -1014,7 +1177,7 @@ namespace Dynamo.ViewModels
             }
             set
             {
-                if(value != null)
+                if (value != null)
                 {
                     expanderActive = value;
                     OnPropertyChanged(nameof(ExpanderActive));
@@ -1023,6 +1186,27 @@ namespace Dynamo.ViewModels
                 {
                     expanderActive = string.Empty;
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Wrapper class for a string object so we can bind TextBoxes in the view to a collection of strings.
+    /// </summary>
+    public class RequiredPropertyKey : NotificationObject
+    {
+        private string propertyKey;
+
+        /// <summary>
+        /// The name of the RequiredProperty
+        /// </summary>
+        public string PropertyKey
+        {
+            get => propertyKey;
+            set
+            {
+                propertyKey = value;
+                RaisePropertyChanged(nameof(PropertyKey));
             }
         }
     }

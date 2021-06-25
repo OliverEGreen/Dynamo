@@ -3483,6 +3483,15 @@ namespace Dynamo.Wpf.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Metadata.
+        /// </summary>
+        public static string MetadataSettingsTab {
+            get {
+                return ResourceManager.GetString("MetadataSettingsTab", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to You must provide a Minor version as a non-negative integer..
         /// </summary>
         public static string MinorVersionNonNegative {
@@ -5142,6 +5151,15 @@ namespace Dynamo.Wpf.Properties {
         public static string RenderingMemoryOutageSummary {
             get {
                 return ResourceManager.GetString("RenderingMemoryOutageSummary", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Required Properties.
+        /// </summary>
+        public static string RequiredPropertiesExpanderName {
+            get {
+                return ResourceManager.GetString("RequiredPropertiesExpanderName", resourceCulture);
             }
         }
         

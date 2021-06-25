@@ -1,10 +1,16 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.IO;
+using System.Linq;
+using System.Windows;
 using System.Windows.Media.Imaging;
 using Dynamo.Core;
 using Dynamo.Graph.Workspaces;
 using Dynamo.GraphMetadata.Controls;
+using Dynamo.GraphMetadata.Models;
 using Dynamo.UI.Commands;
 using Dynamo.Wpf.Extensions;
 
@@ -16,10 +22,14 @@ namespace Dynamo.GraphMetadata
         private readonly GraphMetadataViewExtension extension;
         private HomeWorkspaceModel currentWorkspace;
 
+        private Visibility requiredPropertiesVisibilityVisibility = Visibility.Collapsed;
+        private ObservableCollection<RequiredProperty> requiredProperties;
+
         /// <summary>
         /// Command used to add new custom properties to the CustomProperty collection
         /// </summary>
         public DelegateCommand AddCustomPropertyCommand { get; set; }
+
 
         /// <summary>
         /// Description of the current workspace
@@ -44,7 +54,7 @@ namespace Dynamo.GraphMetadata
         public string GraphAuthor
         {
             get { return currentWorkspace.Author; }
-            set 
+            set
             {
                 if (currentWorkspace != null && GraphAuthor != value)
                 {
@@ -61,7 +71,7 @@ namespace Dynamo.GraphMetadata
         public Uri HelpLink
         {
             get { return currentWorkspace.GraphDocumentationURL; }
-            set 
+            set
             {
                 if (currentWorkspace != null && HelpLink != value)
                 {
@@ -94,10 +104,34 @@ namespace Dynamo.GraphMetadata
             }
         }
 
+        public Visibility RequiredPropertiesVisibility
+        {
+            get => requiredPropertiesVisibilityVisibility;
+            set
+            {
+                requiredPropertiesVisibilityVisibility = value;
+                RaisePropertyChanged("RequiredPropertiesVisibility");
+            }
+        }
+
+
         /// <summary>
         /// Collection of CustomProperties
         /// </summary>
         public ObservableCollection<CustomPropertyControl> CustomProperties { get; set; }
+
+        /// <summary>
+        /// Collection of Properties Required by this ViewExtension
+        /// </summary>
+        public ObservableCollection<RequiredProperty> RequiredProperties
+        {
+            get => requiredProperties;
+            set
+            {
+                requiredProperties = value;
+                RaisePropertyChanged("RequiredProperties");
+            }
+        }
 
         public GraphMetadataViewModel(ViewLoadedParams viewLoadedParams, GraphMetadataViewExtension extension)
         {
@@ -112,8 +146,61 @@ namespace Dynamo.GraphMetadata
             // CurrentWorkspaceCleared will trigger everytime a graph is closed which allows us to reset the properties. 
             this.viewLoadedParams.CurrentWorkspaceCleared += OnCurrentWorkspaceChanged;
 
+            this.viewLoadedParams.PreferenceSettings.RequiredPropertyNames.CollectionChanged += RequiredPropertyNamesOnCollectionChanged;
+
             CustomProperties = new ObservableCollection<CustomPropertyControl>();
+            RequiredProperties = new ObservableCollection<RequiredProperty>();
+
+            RequiredProperties.CollectionChanged += UpdateRequiredPropertiesVisibility;
+
             InitializeCommands();
+        }
+
+        private void RequiredPropertyNamesOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            // RequiredProperties is what's currently showing.
+            List<string> newRequiredPropertyKeys = viewLoadedParams.PreferenceSettings.RequiredPropertyNames.ToList();
+            List<string> existingRequiredPropertyKeys = RequiredProperties.Select(x => x.RequiredPropertyKey).ToList();
+
+            // LINQ set comparison
+            List<string> addedRequiredPropertyKeys = newRequiredPropertyKeys.Where(x => !existingRequiredPropertyKeys.Contains(x)).ToList();
+            List<string> removedRequiredPropertyKeys = existingRequiredPropertyKeys.Where(x => !newRequiredPropertyKeys.Contains(x)).ToList();
+
+            RequiredProperty removedRequiredProperty;
+            
+            removedRequiredProperty = removedRequiredPropertyKeys.Count > 0
+                ? RequiredProperties.FirstOrDefault(x => x.RequiredPropertyKey == removedRequiredPropertyKeys.First())
+                : null;
+            
+            // This should fire every time an edit is made, so should be the case
+            if (addedRequiredPropertyKeys.Count == 1 && removedRequiredPropertyKeys.Count == 1)
+            {
+                int indexToSwapAt = existingRequiredPropertyKeys.IndexOf(removedRequiredPropertyKeys.First());
+                RequiredProperties.RemoveAt(indexToSwapAt);
+                RequiredProperties.Insert
+                (
+                    indexToSwapAt,
+                    new RequiredProperty
+                    {
+                        RequiredPropertyKey = addedRequiredPropertyKeys.First(),
+                        RequiredPropertyValue = removedRequiredProperty.RequiredPropertyValue
+                    }
+                );
+            }
+            else
+            {
+                foreach (string addedRequiredPropertyKey in addedRequiredPropertyKeys)
+                {
+                    RequiredProperties.Add(new RequiredProperty
+                    {
+                        RequiredPropertyKey = addedRequiredPropertyKey,
+                        RequiredPropertyValue = ""
+                    });
+                }
+
+                if (removedRequiredProperty == null) return;
+                RequiredProperties.Remove(removedRequiredProperty);
+            }
         }
 
         private void OnCurrentWorkspaceChanged(Graph.Workspaces.IWorkspaceModel obj)
@@ -142,6 +229,15 @@ namespace Dynamo.GraphMetadata
             }
 
             CustomProperties.Clear();
+            //RequiredProperties.Clear();
+        }
+
+        private void UpdateRequiredPropertiesVisibility(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            RequiredPropertiesVisibility =
+                RequiredProperties == null || RequiredProperties.Count < 1
+                ? Visibility.Collapsed
+                : Visibility.Visible;
         }
 
         private static BitmapImage ImageFromBase64(string b64string)
@@ -161,7 +257,7 @@ namespace Dynamo.GraphMetadata
                 bitmapImage.StreamSource = stream;
                 bitmapImage.EndInit();
                 return bitmapImage;
-            }            
+            }
         }
 
         private static string Base64FromImage(BitmapImage source)
@@ -229,7 +325,7 @@ namespace Dynamo.GraphMetadata
         }
 
         private void MarkCurrentWorkspaceModified()
-        { 
+        {
             if (currentWorkspace != null && !string.IsNullOrEmpty(currentWorkspace.FileName))
             {
                 currentWorkspace.HasUnsavedChanges = true;

@@ -1,12 +1,17 @@
 ﻿using System;
 using System.Windows.Controls;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using Dynamo.Extensions;
 using Dynamo.Graph;
 using Dynamo.GraphMetadata.Properties;
 using Dynamo.Wpf.Extensions;
 using System.Windows;
 using Dynamo.Graph.Workspaces;
+using Dynamo.GraphMetadata.Controls;
+using Dynamo.GraphMetadata.Models;
+using Dynamo.ViewModels;
 
 namespace Dynamo.GraphMetadata
 {
@@ -26,6 +31,10 @@ namespace Dynamo.GraphMetadata
         {
             if (viewLoadedParams == null) throw new ArgumentNullException(nameof(viewLoadedParams));
 
+            // The collection of RequiredProperty names as loaded in from the XML
+            // Needs to populate the collection before the ViewModel constructor gets called
+            ObservableCollection<string> requiredPropertyNames = viewLoadedParams.PreferenceSettings.RequiredPropertyNames;
+
             this.viewLoadedParamsReference = viewLoadedParams;
             this.viewModel = new GraphMetadataViewModel(viewLoadedParams, this);
             this.graphMetadataView = new GraphMetadataView();
@@ -36,6 +45,12 @@ namespace Dynamo.GraphMetadata
             this.graphMetadataMenuItem.Checked += MenuItemCheckHandler;
             this.graphMetadataMenuItem.Unchecked += MenuItemUnCheckedHandler;
             this.viewLoadedParamsReference.AddExtensionMenuItem(this.graphMetadataMenuItem);
+
+            // The UI is updated with keys only - values are populated in OnWorkspaceOpen
+            foreach (string requiredPropertyName in requiredPropertyNames)
+            {
+                this.viewModel.RequiredProperties.Add(new RequiredProperty { RequiredPropertyKey = requiredPropertyName, RequiredPropertyValue = "" });
+            }
         }
 
         private void MenuItemUnCheckedHandler(object sender, RoutedEventArgs e)
@@ -58,18 +73,55 @@ namespace Dynamo.GraphMetadata
         #region Storage Access implementation
 
         /// <summary>
-        /// Adds custom properties serialized in the graph to the viewModels CustomProperty collection
+        /// Adds required property values and instantiates custom properties based on data saved in the .dyn (JSON) file.
         /// </summary>
         /// <param name="extensionData"></param>
         public void OnWorkspaceOpen(Dictionary<string, string> extensionData)
         {
-            foreach (var kv in extensionData)
+            // The list of (unique) RequiredProperty names as loaded in from the XML
+            List<string> requiredPropertyNames = viewLoadedParamsReference.PreferenceSettings.RequiredPropertyNames.ToList();
+
+            Dictionary<string, string> requiredPropertiesToBuild = new Dictionary<string, string>();
+            Dictionary<string, string> customPropertiesToBuild = new Dictionary<string, string>();
+
+            foreach (KeyValuePair<string, string> keyValuePair in extensionData)
             {
-                if (string.IsNullOrEmpty(kv.Key)) continue;
+                if (string.IsNullOrEmpty(keyValuePair.Key)) continue;
 
-                var valueModified = kv.Value == null ? string.Empty : kv.Value;
+                if (requiredPropertyNames.Contains(keyValuePair.Key))
+                {
+                    // Removing any duplicates
+                    if (requiredPropertiesToBuild.ContainsKey(keyValuePair.Key)) continue;
+                    requiredPropertiesToBuild.Add(keyValuePair.Key, keyValuePair.Value);
+                }
+                else
+                {
+                    // Removing any duplicates
+                    if (customPropertiesToBuild.ContainsKey(keyValuePair.Key)) continue;
+                    customPropertiesToBuild.Add(keyValuePair.Key, keyValuePair.Value);
+                }
+            }
 
-                this.viewModel.AddCustomProperty(kv.Key, valueModified, false);
+            foreach (KeyValuePair<string, string> keyValuePair in requiredPropertiesToBuild)
+            {
+                // Looking to find match by key. If we find a match, set its value.
+                RequiredProperty requiredProperty = this.viewModel.RequiredProperties.FirstOrDefault(x => x.RequiredPropertyKey == keyValuePair.Key);
+                
+                if (requiredProperty != null)
+                {
+                    // A match was found, we set its value here.
+                    requiredProperty.RequiredPropertyValue = keyValuePair.Value;
+                }
+                else
+                {
+                    // No match found, we instantiate it here.
+                    this.viewModel.RequiredProperties.Add(new RequiredProperty { RequiredPropertyKey = keyValuePair.Key, RequiredPropertyValue = keyValuePair.Value });
+                }
+            }
+
+            foreach (KeyValuePair<string, string> keyValuePair in customPropertiesToBuild)
+            {
+                this.viewModel.AddCustomProperty(keyValuePair.Key, keyValuePair.Value, false);
             }
         }
 
@@ -86,6 +138,11 @@ namespace Dynamo.GraphMetadata
             foreach (var p in this.viewModel.CustomProperties)
             {
                 extensionData[p.PropertyName] = p.PropertyValue;
+            }
+
+            foreach (RequiredProperty requiredProperty in viewModel.RequiredProperties)
+            {
+                extensionData[requiredProperty.RequiredPropertyKey] = requiredProperty.RequiredPropertyValue;
             }
         }
 
