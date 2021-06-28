@@ -229,7 +229,7 @@ namespace Dynamo.GraphMetadata
             }
 
             CustomProperties.Clear();
-            //RequiredProperties.Clear();
+            RequiredProperties.Clear();
         }
 
         private void UpdateRequiredPropertiesVisibility(object sender, NotifyCollectionChangedEventArgs e)

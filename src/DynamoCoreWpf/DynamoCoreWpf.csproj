@@ -1304,8 +1304,8 @@
     <Resource Include="UI\Images\profile_normal.png" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="UI\Images\add-thick-grey-16px.png" />
-    <Content Include="UI\Images\close-thick-grey-16px.png" />
+    <Resource Include="UI\Images\add-thick-grey-16px.png" />
+    <Resource Include="UI\Images\close-thick-grey-16px.png" />
     <Resource Include="UI\Images\PackageManager\close_16_16.png" />
     <Resource Include="UI\Images\PackageManager\down_16_16.png" />
     <Resource Include="UI\Images\PackageManager\folder_16_16.png" />

@@ -871,9 +871,19 @@
                                     </Grid.RowDefinitions>
                                     <Button
                                         Grid.Row="0"
+                                        Margin="6"
                                         HorizontalAlignment="Right"
-                                        Command="{Binding AddRequiredPropertyCommand}"
-                                        Content="Add Required Property" />
+                                        Command="{Binding AddRequiredPropertyCommand}">
+                                        <Button.Template>
+                                            <ControlTemplate>
+                                                <Image
+                                                    Width="16px"
+                                                    Height="16px"
+                                                    Source="../../UI/Images/add-thick-grey-16px.png" />
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <TextBlock Grid.Row="0" HorizontalAlignment="Right" Margin="30, 5" Text="Add Required Property"></TextBlock>
                                     <ListView
                                         x:Name="RequiredPropertyListView"
                                         Grid.Row="1"
@@ -923,8 +933,13 @@
                                                         Background="Transparent"
                                                         BorderThickness="0"
                                                         Command="{Binding ElementName=DynamoPreferencesWindow, Path=DataContext.DeleteRequiredPropertyCommand}"
-                                                        CommandParameter="{Binding .}"
-                                                        Content="X" />
+                                                        CommandParameter="{Binding .}">
+                                                        <Button.Template>
+                                                            <ControlTemplate>
+                                                                <Image Width="16px" Source="/DynamoCoreWpf;component/UI/Images/close-thick-grey-16px.png" />
+                                                            </ControlTemplate>
+                                                        </Button.Template>
+                                                    </Button>
                                                 </Grid>
                                             </DataTemplate>
                                         </ListView.ItemTemplate>

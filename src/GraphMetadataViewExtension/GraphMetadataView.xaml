@@ -236,12 +236,14 @@
                         Style="{StaticResource HeaderStyle}"
                         Text="Custom Properties" />
                     <Button Grid.Column="1" Command="{Binding AddCustomPropertyCommand}">
-                        <!--<Button.Template>
-                        <ControlTemplate>
-                            <Image Width="16px" Height="16px"
-                                   Source="/../DynamoCoreWpf/UI/Images/add-thick-grey-16px.png" />
-                        </ControlTemplate>
-                    </Button.Template>-->
+                        <Button.Template>
+                            <ControlTemplate>
+                                <Image
+                                    Width="16px"
+                                    Height="16px"
+                                    Source="/DynamoCoreWpf;component/UI/Images/add-thick-grey-16px.png" />
+                            </ControlTemplate>
+                        </Button.Template>
                     </Button>
                 </Grid>
 

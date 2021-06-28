@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Xml.Serialization;
@@ -420,6 +421,21 @@ namespace Dynamo.Configuration
         /// Show Run Preview flag.
         /// </summary>
         public bool ShowRunPreview { get; set; }
+
+        /// <summary>
+        /// Collection of the names of the required properties, as set in the DynamoSettings file
+        /// </summary>
+        private ObservableCollection<string> requiredPropertyNames;
+        public ObservableCollection<string> RequiredPropertyNames
+        {
+            get => requiredPropertyNames;
+            set
+            {
+                requiredPropertyNames = value;
+                RaisePropertyChanged(nameof(RequiredPropertyNames));
+            }
+        }
+
         #endregion
 
         /// <summary>
@@ -467,7 +483,7 @@ namespace Dynamo.Configuration
             EnableNodeAutoComplete = true;
             DefaultPythonEngine = string.Empty;
             ViewExtensionSettings = new List<ViewExtensionSettings>();
-
+            RequiredPropertyNames = new ObservableCollection<string>();
         }
 
         /// <summary>
