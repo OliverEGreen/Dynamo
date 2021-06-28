@@ -27,15 +27,17 @@
             <convertes:UriToStringConverter x:Key="UriToStringConverter" />
             <vr:UriValidationRule x:Key="UriValidationRule" />
 
-            <ControlTemplate x:Key="TextboxErrorTemplate">
+            <ControlTemplate x:Key="TextBoxErrorTemplate">
                 <StackPanel Orientation="Vertical">
                     <AdornedElementPlaceholder />
-                    <TextBlock
-                        Margin="4"
-                        HorizontalAlignment="Left"
-                        FontStyle="Italic"
-                        Foreground="Red"
-                        Text="{Binding Path=ErrorContent}" />
+                    <AdornedElementPlaceholder>
+                        <TextBlock
+                            Margin="4"
+                            HorizontalAlignment="Left"
+                            FontStyle="Italic"
+                            Foreground="Red"
+                            Text="{Binding Path=ErrorContent}" />
+                    </AdornedElementPlaceholder>
                 </StackPanel>
             </ControlTemplate>
 
@@ -108,7 +110,7 @@
 
         </ResourceDictionary>
     </UserControl.Resources>
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
         <Grid Margin="10px,10px">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -145,7 +147,7 @@
                         Name="UriTextBox"
                         MouseDoubleClick="TextBox_MouseDoubleClick"
                         TextWrapping="WrapWithOverflow"
-                        Validation.ErrorTemplate="{StaticResource ResourceKey=TextboxErrorTemplate}">
+                        Validation.ErrorTemplate="{StaticResource ResourceKey=TextBoxErrorTemplate}">
                         <TextBox.Text>
                             <Binding
                                 Mode="TwoWay"
@@ -165,9 +167,11 @@
                                 <Style.Triggers>
                                     <Trigger Property="Validation.HasError" Value="True">
                                         <Setter Property="TextDecorations" Value="None" />
+                                        <Setter Property="Margin" Value="0,0,0,15" />
                                     </Trigger>
                                     <Trigger Property="Validation.HasError" Value="False">
                                         <Setter Property="TextDecorations" Value="Underline" />
+                                        <Setter Property="Margin" Value="0" />
                                     </Trigger>
                                 </Style.Triggers>
                             </Style>
@@ -181,7 +185,7 @@
                     Background="Transparent"
                     BorderBrush="Transparent"
                     BorderThickness="0"
-                    ItemsSource="{Binding RequiredProperties, UpdateSourceTrigger=PropertyChanged}"
+                    ItemsSource="{Binding RequiredProperties}"
                     KeyboardNavigation.TabNavigation="Continue"
                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     Visibility="{Binding RequiredPropertiesVisibility, UpdateSourceTrigger=PropertyChanged}">
