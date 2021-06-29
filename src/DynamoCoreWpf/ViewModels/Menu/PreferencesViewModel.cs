@@ -8,10 +8,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Windows.Input;
-using DesignScript.Builtin;
-using Dynamo.Annotations;
 using Dynamo.Configuration;
 using Dynamo.Core;
 using Dynamo.Graph.Workspaces;
@@ -19,12 +15,9 @@ using Dynamo.Logging;
 using Dynamo.Models;
 using Dynamo.PackageManager;
 using Dynamo.UI.Commands;
-using Dynamo.Utilities;
-using Dynamo.Wpf;
 using Dynamo.Wpf.ViewModels.Core.Converters;
-using Dynamo.Wpf.Views;
-using RestSharp.Extensions;
 using Res = Dynamo.Wpf.Properties.Resources;
+using Visibility = System.Windows.Visibility;
 
 namespace Dynamo.ViewModels
 {
@@ -716,6 +709,7 @@ namespace Dynamo.ViewModels
 
 
         private ObservableCollection<RequiredPropertyKey> requiredPropertyKeys;
+        
 
         /// <summary>
         /// The collection of all RequiredPropertyKeys found in the DynamoSettings XML file
@@ -727,6 +721,21 @@ namespace Dynamo.ViewModels
             {
                 requiredPropertyKeys = value;
                 RaisePropertyChanged(nameof(RequiredPropertyKeys));
+            }
+        }
+        
+        private Visibility requiredPropertiesDuplicateKeyWarningVisibility;
+        
+        /// <summary>
+        /// Sets whether the duplicate RequiredProperty keys warning is visible
+        /// </summary>
+        public Visibility RequiredPropertiesDuplicateKeyWarningVisibility
+        {
+            get => requiredPropertiesDuplicateKeyWarningVisibility;
+            set
+            {
+                requiredPropertiesDuplicateKeyWarningVisibility = value;
+                RaisePropertyChanged(nameof(RequiredPropertiesDuplicateKeyWarningVisibility));
             }
         }
 
@@ -825,6 +834,8 @@ namespace Dynamo.ViewModels
 
             this.AddRequiredPropertyCommand = new DelegateCommand(AddRequiredPropertyKey);
             this.DeleteRequiredPropertyCommand = new DelegateCommand(DeleteRequiredPropertyKey);
+
+            RequiredPropertiesDuplicateKeyWarningVisibility = Visibility.Collapsed;
         }
 
         /// <summary>
@@ -911,11 +922,29 @@ namespace Dynamo.ViewModels
             SavedChangesTooltip = Res.PreferencesViewSavedChangesTooltip + DateTime.Now.ToString(@"hh:mm tt", new CultureInfo("en-US"));
         }
 
+        internal bool CheckDuplicateRequiredPropertyKeysExist()
+        {
+            var numberOfKeys = RequiredPropertyKeys.Count;
+            var numberOfUniqueKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).Distinct().Count();
+            return numberOfKeys != numberOfUniqueKeys;
+        }
+
+        internal void UpdateRequiredPropertiesDuplicateKeyWarningVisibility(bool visible)
+        {
+            RequiredPropertiesDuplicateKeyWarningVisibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        }
+
         /// <summary>
         /// Updates the RequiredProperties list in the PreferenceSettings
         /// </summary>
         internal void UpdatePreferenceSettingsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
+            // It's an edge case, but adding a new key could cause duplicate keys to exist. 
+            // Likewise, we'd want a duplicate key being removed to fire this event
+            bool duplicateExists = CheckDuplicateRequiredPropertyKeysExist();
+            UpdateRequiredPropertiesDuplicateKeyWarningVisibility(duplicateExists);
+            if (duplicateExists) return;
+
             // Comparing the UI and the saved collection
             List<string> newRequiredPropertyKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
             List<string> existingRequiredPropertyKeys = preferenceSettings.RequiredPropertyNames.ToList();
@@ -932,22 +961,6 @@ namespace Dynamo.ViewModels
             {
                 preferenceSettings.RequiredPropertyNames.Remove(removedRequiredPropertyKey);
             }
-
-            //if (e.NewItems != null)
-            //{
-            //    foreach (RequiredPropertyKey newRequiredPropertyKey in e.NewItems)
-            //    {
-            //        preferenceSettings.RequiredPropertyNames.Add(newRequiredPropertyKey.PropertyKey);
-            //    }
-            //}
-
-            //if (e.OldItems != null)
-            //{
-            //    foreach (RequiredPropertyKey oldRequiredPropertyKey in e.OldItems)
-            //    {
-            //        preferenceSettings.RequiredPropertyNames.Remove(oldRequiredPropertyKey.PropertyKey);
-            //    }
-            //}
         }
 
         /// <summary>
@@ -955,6 +968,16 @@ namespace Dynamo.ViewModels
         /// </summary>
         internal void UpdatePreferenceSettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            if (!(sender is RequiredPropertyKey requiredPropertyKey)) return;
+            
+            // Any RequiredProperties without a name are disregarded
+            if (string.IsNullOrEmpty(requiredPropertyKey.PropertyKey)) return;
+            
+            // RequiredProperties cannot have duplicate keys
+            bool duplicateExists = CheckDuplicateRequiredPropertyKeysExist();
+            UpdateRequiredPropertiesDuplicateKeyWarningVisibility(duplicateExists);
+            if (duplicateExists) return;
+
             // Comparing the UI and the saved collection
             List<string> newRequiredPropertyKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
             List<string> existingRequiredPropertyKeys = preferenceSettings.RequiredPropertyNames.ToList();
@@ -967,21 +990,6 @@ namespace Dynamo.ViewModels
 
             int indexToSwapAt = existingRequiredPropertyKeys.IndexOf(removedRequiredPropertyKeys.First());
             preferenceSettings.RequiredPropertyNames[indexToSwapAt] = addedRequiredPropertyKeys.First();
-
-            //List<string> requiredPropertyKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
-            //List<string> preferenceRequiredProperties = preferenceSettings.RequiredPropertyNames.ToList();
-
-            //foreach (string requiredPropertyKey in requiredPropertyKeys)
-            //{
-            //    preferenceSettings.RequiredPropertyNames.Add(requiredPropertyKey);
-            //};
-            //foreach (string preferenceRequiredProperty in preferenceRequiredProperties)
-            //{
-            //    if (!requiredPropertyKeys.Contains(preferenceRequiredProperty))
-            //    {
-            //        preferenceSettings.RequiredPropertyNames.Remove(preferenceRequiredProperty);
-            //    }
-            //}
         }
 
         /// <summary>

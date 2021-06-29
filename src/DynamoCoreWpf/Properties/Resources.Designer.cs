@@ -5155,6 +5155,15 @@ namespace Dynamo.Wpf.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Required Properties must have unique names. Any non-unique names will be discarded when this window closes..
+        /// </summary>
+        public static string RequiredPropertiesDuplicateKeyWarning {
+            get {
+                return ResourceManager.GetString("RequiredPropertiesDuplicateKeyWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Required Properties.
         /// </summary>
         public static string RequiredPropertiesExpanderName {

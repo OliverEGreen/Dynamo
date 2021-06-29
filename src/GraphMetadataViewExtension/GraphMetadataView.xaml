@@ -185,7 +185,7 @@
                     Background="Transparent"
                     BorderBrush="Transparent"
                     BorderThickness="0"
-                    ItemsSource="{Binding RequiredProperties}"
+                    ItemsSource="{Binding RequiredProperties, UpdateSourceTrigger=PropertyChanged}"
                     KeyboardNavigation.TabNavigation="Continue"
                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                     Visibility="{Binding RequiredPropertiesVisibility, UpdateSourceTrigger=PropertyChanged}">

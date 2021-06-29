@@ -2434,6 +2434,9 @@ Uninstall the following packages: {0}?</value>
 	<data name="RequiredPropertiesExpanderName" xml:space="preserve">
     <value>Required Properties</value>
   </data>
+	<data name="RequiredPropertiesDuplicateKeyWarning" xml:space="preserve">
+    <value>Required Properties must have unique names. Any non-unique names will be discarded when this window closes.</value>
+  </data>
 	<data name="PackagePathAddPathButtonName" xml:space="preserve">
     <value>Add Paths</value>
   </data>
