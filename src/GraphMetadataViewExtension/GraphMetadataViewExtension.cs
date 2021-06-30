@@ -3,11 +3,13 @@ using System.Windows.Controls;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text;
 using Dynamo.Extensions;
 using Dynamo.Graph;
 using Dynamo.GraphMetadata.Properties;
 using Dynamo.Wpf.Extensions;
 using System.Windows;
+using Dynamo.Configuration;
 using Dynamo.Graph.Workspaces;
 using Dynamo.GraphMetadata.Controls;
 using Dynamo.GraphMetadata.Models;
@@ -30,11 +32,7 @@ namespace Dynamo.GraphMetadata
         public override void Loaded(ViewLoadedParams viewLoadedParams)
         {
             if (viewLoadedParams == null) throw new ArgumentNullException(nameof(viewLoadedParams));
-
-            // The collection of RequiredProperty names as loaded in from the XML
-            // Needs to populate the collection before the ViewModel constructor gets called
-            ObservableCollection<string> requiredPropertyNames = viewLoadedParams.PreferenceSettings.RequiredPropertyNames;
-
+            
             this.viewLoadedParamsReference = viewLoadedParams;
             this.viewModel = new GraphMetadataViewModel(viewLoadedParams, this);
             this.graphMetadataView = new GraphMetadataView();
@@ -45,12 +43,6 @@ namespace Dynamo.GraphMetadata
             this.graphMetadataMenuItem.Checked += MenuItemCheckHandler;
             this.graphMetadataMenuItem.Unchecked += MenuItemUnCheckedHandler;
             this.viewLoadedParamsReference.AddExtensionMenuItem(this.graphMetadataMenuItem);
-
-            // The UI is updated with keys only - values are populated in OnWorkspaceOpen
-            foreach (string requiredPropertyName in requiredPropertyNames)
-            {
-                this.viewModel.RequiredProperties.Add(new RequiredProperty { RequiredPropertyKey = requiredPropertyName, RequiredPropertyValue = "" });
-            }
         }
 
         private void MenuItemUnCheckedHandler(object sender, RoutedEventArgs e)
@@ -60,7 +52,7 @@ namespace Dynamo.GraphMetadata
 
         private void MenuItemCheckHandler(object sender, RoutedEventArgs e)
         {
-            // Dont allow the extension to show in anything that isnt a HomeWorkspaceModel
+            // Don't allow the extension to show in anything that isnt a HomeWorkspaceModel
             if (!(this.viewLoadedParamsReference.CurrentWorkspaceModel is HomeWorkspaceModel))
             {
                 this.Closed();
@@ -78,21 +70,28 @@ namespace Dynamo.GraphMetadata
         /// <param name="extensionData"></param>
         public void OnWorkspaceOpen(Dictionary<string, string> extensionData)
         {
-            // The list of (unique) RequiredProperty names as loaded in from the XML
-            List<string> requiredPropertyNames = viewLoadedParamsReference.PreferenceSettings.RequiredPropertyNames.ToList();
+            // There are multiple places where ExtensionRequiredProperties' values may be set
+            // If the value is defined globally, this is saved in the DynamoSettings.xml file and is loaded
+            // in the constructor of the GraphMetadataViewModel
+            // However, ExtensionRequiredProperty values may also be graph-specific, in which case they live in the 
+            // JSON data of the .dyn file format. In this case, they are loaded in here.
+            
+            // For reference, we load the list of ExtensionRequiredProperty names as loaded in from the XML
+            List<string> requiredPropertyKeys = this.viewModel.ExtensionRequiredProperties.Select(x => x.Key).ToList();
 
-            Dictionary<string, string> requiredPropertiesToBuild = new Dictionary<string, string>();
+            Dictionary<string, string> extensionRequiredPropertiesToBuild = new Dictionary<string, string>();
             Dictionary<string, string> customPropertiesToBuild = new Dictionary<string, string>();
 
             foreach (KeyValuePair<string, string> keyValuePair in extensionData)
             {
                 if (string.IsNullOrEmpty(keyValuePair.Key)) continue;
 
-                if (requiredPropertyNames.Contains(keyValuePair.Key))
+                // Should a key conflict arise between an ExtensionRequiredProperty and a CustomProperty, the ExtensionRequiredProperty takes primacy
+                if (requiredPropertyKeys.Contains(keyValuePair.Key))
                 {
                     // Removing any duplicates
-                    if (requiredPropertiesToBuild.ContainsKey(keyValuePair.Key)) continue;
-                    requiredPropertiesToBuild.Add(keyValuePair.Key, keyValuePair.Value);
+                    if (extensionRequiredPropertiesToBuild.ContainsKey(keyValuePair.Key)) continue;
+                    extensionRequiredPropertiesToBuild.Add(keyValuePair.Key, keyValuePair.Value);
                 }
                 else
                 {
@@ -102,25 +101,43 @@ namespace Dynamo.GraphMetadata
                 }
             }
 
-            foreach (KeyValuePair<string, string> keyValuePair in requiredPropertiesToBuild)
+            // To prevent duplicate keys being added
+            List<string> resolvedKeys = new List<string>();
+            
+            foreach (KeyValuePair<string, string> keyValuePair in extensionRequiredPropertiesToBuild)
             {
-                // Looking to find match by key. If we find a match, set its value.
-                RequiredProperty requiredProperty = this.viewModel.RequiredProperties.FirstOrDefault(x => x.RequiredPropertyKey == keyValuePair.Key);
+                // Looking through the already-instantiated ExtensionRequiredProperties (from the XML) to find match by key.
+                ExtensionRequiredProperty extensionRequiredProperty = this.viewModel.ExtensionRequiredProperties.FirstOrDefault(x => x.Key == keyValuePair.Key);
                 
-                if (requiredProperty != null)
+                // Here, we are just setting a value for the ones that have locally-defined values.
+                // However, if an already-instantiated ExtensionRequiredProperty has .IsReadOnly as false, this means its value is defined globally.
+                if (extensionRequiredProperty != null && extensionRequiredProperty.IsReadOnly && !resolvedKeys.Contains(keyValuePair.Key))
                 {
-                    // A match was found, we set its value here.
-                    requiredProperty.RequiredPropertyValue = keyValuePair.Value;
+                    // A match was found in the .dyn/JSON data and the value is defined locally. We set its value here.
+                    extensionRequiredProperty.Value = keyValuePair.Value;
+                    resolvedKeys.Add(extensionRequiredProperty.Key);
                 }
                 else
                 {
-                    // No match found, we instantiate it here.
-                    this.viewModel.RequiredProperties.Add(new RequiredProperty { RequiredPropertyKey = keyValuePair.Key, RequiredPropertyValue = keyValuePair.Value });
+                    // If the key is already taken by an XML-defined ExtensionRequiredProperty, we disregard anything else encountered.
+                    if (requiredPropertyKeys.Contains(keyValuePair.Key) || resolvedKeys.Contains(keyValuePair.Key)) continue;
+                    
+                    // A new ExtensionRequiredProperty is instantiated and given the key/value as defined in the .dyn/JSON data.
+                    this.viewModel.ExtensionRequiredProperties.Add(new ExtensionRequiredProperty(Guid.NewGuid().ToString())
+                    {
+                        Key = keyValuePair.Key,
+                        Value = keyValuePair.Value,
+                        IsReadOnly = false
+                    });
+                    resolvedKeys.Add(keyValuePair.Key);
                 }
             }
 
+            // The instantiation of CustomProperties comes last. If there are values in the .dyn/JSON data which aren't 
+            // either globally-set or locally-set ExtensionRequiredProperties, they'll be loaded in as CustomProperties.
             foreach (KeyValuePair<string, string> keyValuePair in customPropertiesToBuild)
             {
+                if (resolvedKeys.Contains(keyValuePair.Key)) continue;
                 this.viewModel.AddCustomProperty(keyValuePair.Key, keyValuePair.Value, false);
             }
         }
@@ -140,9 +157,9 @@ namespace Dynamo.GraphMetadata
                 extensionData[p.PropertyName] = p.PropertyValue;
             }
 
-            foreach (RequiredProperty requiredProperty in viewModel.RequiredProperties)
+            foreach (ExtensionRequiredProperty extensionRequiredProperty in viewModel.ExtensionRequiredProperties)
             {
-                extensionData[requiredProperty.RequiredPropertyKey] = requiredProperty.RequiredPropertyValue;
+                extensionData[extensionRequiredProperty.Key] = extensionRequiredProperty.Value;
             }
         }
 

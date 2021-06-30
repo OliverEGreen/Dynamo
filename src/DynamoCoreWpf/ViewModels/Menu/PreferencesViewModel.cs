@@ -700,6 +700,11 @@ namespace Dynamo.ViewModels
         /// </summary>
         public DelegateCommand DeleteRequiredPropertyCommand { get; set; }
 
+        /// <summary>
+        /// Command used to toggle whether a RequiredProperty has its value set globally or per-graph
+        /// </summary>
+        public DelegateCommand ToggleRequiredPropertyIsGlobalCommand { get; set; }
+
         #endregion
 
         /// <summary>
@@ -708,19 +713,18 @@ namespace Dynamo.ViewModels
         public PackagePathViewModel PackagePathsViewModel { get; set; }
 
 
-        private ObservableCollection<RequiredPropertyKey> requiredPropertyKeys;
+        private ObservableCollection<RequiredProperty> requiredProperties;
         
-
         /// <summary>
-        /// The collection of all RequiredPropertyKeys found in the DynamoSettings XML file
+        /// The collection of all RequiredProperties found in the DynamoSettings XML file
         /// </summary>
-        public ObservableCollection<RequiredPropertyKey> RequiredPropertyKeys
+        public ObservableCollection<RequiredProperty> RequiredProperties
         {
-            get => requiredPropertyKeys;
+            get => requiredProperties;
             set
             {
-                requiredPropertyKeys = value;
-                RaisePropertyChanged(nameof(RequiredPropertyKeys));
+                requiredProperties = value;
+                RaisePropertyChanged(nameof(RequiredProperties));
             }
         }
         
@@ -752,7 +756,7 @@ namespace Dynamo.ViewModels
             this.dynamoViewModel = dynamoViewModel;
 
             PythonEnginesList = new ObservableCollection<string>();
-            PythonEnginesList.Add(Wpf.Properties.Resources.DefaultPythonEngineNone);
+            PythonEnginesList.Add(Res.DefaultPythonEngineNone);
             AddPythonEnginesOptions();
 
             //Sets SelectedPythonEngine.
@@ -830,12 +834,14 @@ namespace Dynamo.ViewModels
 
             this.PropertyChanged += Model_PropertyChanged;
 
-            InitializeRequiredPropertyKeys();
+            InitializeRequiredProperties();
 
-            this.AddRequiredPropertyCommand = new DelegateCommand(AddRequiredPropertyKey);
+            this.AddRequiredPropertyCommand = new DelegateCommand(AddRequiredProperty);
             this.DeleteRequiredPropertyCommand = new DelegateCommand(DeleteRequiredPropertyKey);
+            this.ToggleRequiredPropertyIsGlobalCommand = new DelegateCommand(ToggleRequiredPropertyIsGlobal);
 
-            RequiredPropertiesDuplicateKeyWarningVisibility = Visibility.Collapsed;
+            // RequiredProperties cannot have duplicate keys
+            CheckDuplicateRequiredPropertyKeysExist();
         }
 
         /// <summary>
@@ -924,9 +930,13 @@ namespace Dynamo.ViewModels
 
         internal bool CheckDuplicateRequiredPropertyKeysExist()
         {
-            var numberOfKeys = RequiredPropertyKeys.Count;
-            var numberOfUniqueKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).Distinct().Count();
-            return numberOfKeys != numberOfUniqueKeys;
+            var numberOfKeys = RequiredProperties.Count;
+            var numberOfUniqueKeys = RequiredProperties.Select(x => x.Key).Distinct().Count();
+            // If there aren't at least two keys we can't have duplicates
+            bool duplicatesExist = numberOfUniqueKeys != numberOfKeys && numberOfKeys >= 2;
+            
+            UpdateRequiredPropertiesDuplicateKeyWarningVisibility(duplicatesExist);
+            return duplicatesExist;
         }
 
         internal void UpdateRequiredPropertiesDuplicateKeyWarningVisibility(bool visible)
@@ -941,25 +951,22 @@ namespace Dynamo.ViewModels
         {
             // It's an edge case, but adding a new key could cause duplicate keys to exist. 
             // Likewise, we'd want a duplicate key being removed to fire this event
-            bool duplicateExists = CheckDuplicateRequiredPropertyKeysExist();
-            UpdateRequiredPropertiesDuplicateKeyWarningVisibility(duplicateExists);
-            if (duplicateExists) return;
+            if (CheckDuplicateRequiredPropertyKeysExist()) return;
 
-            // Comparing the UI and the saved collection
-            List<string> newRequiredPropertyKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
-            List<string> existingRequiredPropertyKeys = preferenceSettings.RequiredPropertyNames.ToList();
-
-            List<string> addedRequiredPropertyKeys = newRequiredPropertyKeys.Where(x => !existingRequiredPropertyKeys.Contains(x)).ToList();
-            List<string> removedRequiredPropertyKeys = existingRequiredPropertyKeys.Where(x => !newRequiredPropertyKeys.Contains(x)).ToList();
-
-            foreach (string addedRequiredPropertyKey in addedRequiredPropertyKeys)
+            if (e.NewItems != null)
             {
-                preferenceSettings.RequiredPropertyNames.Add(addedRequiredPropertyKey);
+                foreach (RequiredProperty requiredProperty in e.NewItems)
+                {
+                    preferenceSettings.RequiredProperties.Add(requiredProperty);
+                }
             }
 
-            foreach (string removedRequiredPropertyKey in removedRequiredPropertyKeys)
+            if (e.OldItems != null)
             {
-                preferenceSettings.RequiredPropertyNames.Remove(removedRequiredPropertyKey);
+                foreach (RequiredProperty requiredProperty in e.OldItems)
+                {
+                    preferenceSettings.RequiredProperties.Remove(requiredProperty);
+                }
             }
         }
 
@@ -968,28 +975,19 @@ namespace Dynamo.ViewModels
         /// </summary>
         internal void UpdatePreferenceSettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (!(sender is RequiredPropertyKey requiredPropertyKey)) return;
-            
-            // Any RequiredProperties without a name are disregarded
-            if (string.IsNullOrEmpty(requiredPropertyKey.PropertyKey)) return;
-            
+            if (!(sender is RequiredProperty requiredProperty)) return;
+            if (string.IsNullOrEmpty(requiredProperty.Key)) return;
+            RequiredProperty requiredPropertyToUpdate = preferenceSettings.RequiredProperties.FirstOrDefault(x => x.Key == requiredProperty.Key);
+            if (requiredPropertyToUpdate == null) return;
+
             // RequiredProperties cannot have duplicate keys
-            bool duplicateExists = CheckDuplicateRequiredPropertyKeysExist();
-            UpdateRequiredPropertiesDuplicateKeyWarningVisibility(duplicateExists);
-            if (duplicateExists) return;
+            if (CheckDuplicateRequiredPropertyKeysExist()) return;
 
-            // Comparing the UI and the saved collection
-            List<string> newRequiredPropertyKeys = RequiredPropertyKeys.Select(x => x.PropertyKey).ToList();
-            List<string> existingRequiredPropertyKeys = preferenceSettings.RequiredPropertyNames.ToList();
-                        
-            List<string> addedRequiredPropertyKeys = newRequiredPropertyKeys.Where(x => !existingRequiredPropertyKeys.Contains(x)).ToList();
-            List<string> removedRequiredPropertyKeys = existingRequiredPropertyKeys.Where(x => !newRequiredPropertyKeys.Contains(x)).ToList();
-
-            // This should fire every time an edit is made, so should be the case
-            if (addedRequiredPropertyKeys.Count != 1 || removedRequiredPropertyKeys.Count != 1) return;
-
-            int indexToSwapAt = existingRequiredPropertyKeys.IndexOf(removedRequiredPropertyKeys.First());
-            preferenceSettings.RequiredPropertyNames[indexToSwapAt] = addedRequiredPropertyKeys.First();
+            // If no change is required
+            //if (requiredPropertyToUpdate.Key == requiredProperty.Key) return;
+            string blah = requiredProperty.Key;
+            // If a change is required, the RequiredProperty's key is updated
+            // requiredPropertyToUpdate.Key = requiredProperty.Key;
         }
 
         /// <summary>
@@ -1035,44 +1033,58 @@ namespace Dynamo.ViewModels
         }
 
         /// <summary>
-        /// Loads the RequiredPropertyKeys from the DynamoSettings.xml file
+        /// Loads the RequiredProperties from the DynamoSettings.xml file
         /// </summary>
-        private void InitializeRequiredPropertyKeys()
+        private void InitializeRequiredProperties()
         {
-            RequiredPropertyKeys = new ObservableCollection<RequiredPropertyKey>();
+            RequiredProperties = new ObservableCollection<RequiredProperty>();
 
-            foreach (string requiredPropertyName in preferenceSettings.RequiredPropertyNames)
+            foreach (RequiredProperty requiredProperty in preferenceSettings.RequiredProperties)
             {
-                RequiredPropertyKey requiredPropertyKey = new RequiredPropertyKey {PropertyKey = requiredPropertyName};
-                requiredPropertyKey.PropertyChanged += UpdatePreferenceSettingsPropertyChanged;
-                RequiredPropertyKeys.Add(requiredPropertyKey);
+                //Skipping over any properties whose keys are empty.
+                if (string.IsNullOrEmpty(requiredProperty.Key)) continue;
+
+                requiredProperty.PropertyChanged += UpdatePreferenceSettingsPropertyChanged;
+                RequiredProperties.Add(requiredProperty);
             }
-            
-            RequiredPropertyKeys.CollectionChanged += UpdatePreferenceSettingsCollectionChanged;
+            RequiredProperties.CollectionChanged += UpdatePreferenceSettingsCollectionChanged;
         }
 
         /// <summary>
-        /// Adds a RequiredProperty to the collection, triggered via the View
+        /// Adds a RequiredProperty to the local collection, triggered via the View
         /// </summary>
         /// <param name="obj"></param>
-        private void AddRequiredPropertyKey(object obj)
+        private void AddRequiredProperty(object obj)
         {
-            var newKey = $"Required Property {RequiredPropertyKeys.Count + 1}";
-            RequiredPropertyKey requiredPropertyKey = new RequiredPropertyKey { PropertyKey = newKey };
-            requiredPropertyKey.PropertyChanged += UpdatePreferenceSettingsPropertyChanged;
-            this.RequiredPropertyKeys.Add(requiredPropertyKey);
+            RequiredProperty requiredProperty = new RequiredProperty
+            {
+                Key = $"Required Property {RequiredProperties.Count + 1}",
+                Value = ""
+            };
+            requiredProperty.PropertyChanged += UpdatePreferenceSettingsPropertyChanged;
+            RequiredProperties.Add(requiredProperty);
         }
 
         /// <summary>
-        /// Deletes a RequiredProperty from the collection, triggered via the View
+        /// Deletes a RequiredProperty from the local collection, triggered via the View
         /// </summary>
         /// <param name="obj"></param>
         private void DeleteRequiredPropertyKey(object obj)
         {
-            if (!(obj is RequiredPropertyKey requiredPropertyKey)) return;
-            if (!RequiredPropertyKeys.Contains(requiredPropertyKey)) return;
-            int index = RequiredPropertyKeys.IndexOf(requiredPropertyKey);
-            this.RequiredPropertyKeys.RemoveAt(index);
+            if (!(obj is RequiredProperty requiredProperty)) return;
+            requiredProperty.PropertyChanged -= UpdatePreferenceSettingsPropertyChanged;
+            if (!RequiredProperties.Select(x => x.Key).Contains(requiredProperty.Key)) return;
+            RequiredProperties.Remove(requiredProperty);
+        }
+
+        /// <summary>
+        /// Toggles whether a RequiredProperty has its value set globally, or per-graph
+        /// </summary>
+        /// <param name="obj"></param>
+        private void ToggleRequiredPropertyIsGlobal(object obj)
+        {
+            if (!(obj is RequiredProperty requiredProperty)) return;
+            requiredProperty.ValueIsGlobal = !requiredProperty.ValueIsGlobal;
         }
     }
 
@@ -1194,27 +1206,6 @@ namespace Dynamo.ViewModels
                 {
                     expanderActive = string.Empty;
                 }
-            }
-        }
-    }
-
-    /// <summary>
-    /// Wrapper class for a string object so we can bind TextBoxes in the view to a collection of strings.
-    /// </summary>
-    public class RequiredPropertyKey : NotificationObject
-    {
-        private string propertyKey;
-
-        /// <summary>
-        /// The name of the RequiredProperty
-        /// </summary>
-        public string PropertyKey
-        {
-            get => propertyKey;
-            set
-            {
-                propertyKey = value;
-                RaisePropertyChanged(nameof(PropertyKey));
             }
         }
     }

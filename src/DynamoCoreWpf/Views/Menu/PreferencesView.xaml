@@ -15,7 +15,6 @@
     xmlns:sys="clr-namespace:System;assembly=mscorlib"
     xmlns:ui="clr-namespace:Dynamo.UI"
     xmlns:viewModels="clr-namespace:Dynamo.ViewModels"
-    xmlns:vr="clr-namespace:Dynamo.Wpf.ValidationRules"
     x:Name="DynamoPreferencesWindow"
     Width="530"
     Height="474"
@@ -881,6 +880,7 @@
                                         Margin="6"
                                         HorizontalAlignment="Right"
                                         Command="{Binding AddRequiredPropertyCommand}"
+                                        ToolTip="{x:Static p:Resources.RequiredPropertiesAddRequiredPropertyToolTip}"
                                         Cursor="Hand">
                                         <Button.Template>
                                             <ControlTemplate>
@@ -912,7 +912,7 @@
                                         Background="Transparent"
                                         BorderBrush="Transparent"
                                         BorderThickness="0"
-                                        ItemsSource="{Binding RequiredPropertyKeys, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                        ItemsSource="{Binding RequiredProperties, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                         KeyboardNavigation.TabNavigation="Continue"
                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                         <ListView.ItemContainerStyle>
@@ -930,12 +930,17 @@
                                         <ListView.ItemTemplate>
                                             <DataTemplate>
                                                 <Grid HorizontalAlignment="Stretch">
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto" />
+                                                        <RowDefinition Height="Auto" />
+                                                    </Grid.RowDefinitions>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <TextBox
                                                         x:Name="RequiredPropertyNameTextBox"
+                                                        Grid.Row="0"
                                                         Grid.Column="0"
                                                         Width="Auto"
                                                         Height="25"
@@ -943,16 +948,39 @@
                                                         Padding="3"
                                                         HorizontalAlignment="Stretch"
                                                         VerticalContentAlignment="Center"
-                                                        MaxLength="100"
                                                         Background="{StaticResource PreferencesWindowItemDarkerBackgroundColor}"
                                                         BorderBrush="Transparent"
                                                         Foreground="{StaticResource PreferencesWindowFontColor}"
-                                                        Text="{Binding PropertyKey, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                                                        MaxLength="100"
+                                                        Text="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                     <Button
+                                                        Grid.Row="0"
+                                                        Grid.Column="1"
+                                                        Margin="5,0,22,0"
+                                                        HorizontalAlignment="Right"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        ToolTip="{x:Static p:Resources.RequiredPropertiesToggleGlobalValueToolTip}"
+                                                        Command="{Binding ElementName=DynamoPreferencesWindow, Path=DataContext.ToggleRequiredPropertyIsGlobalCommand}"
+                                                        CommandParameter="{Binding .}"
+                                                        Cursor="Hand">
+                                                        <Button.Template>
+                                                            <ControlTemplate>
+                                                                <fa:ImageAwesome
+                                                                    Height="16px"
+                                                                    Foreground="{StaticResource FilterIconColor}"
+                                                                    Icon="Globe" />
+                                                            </ControlTemplate>
+                                                        </Button.Template>
+                                                    </Button>
+                                                    <Button
+                                                        Grid.Row="0"
                                                         Grid.Column="1"
                                                         Margin="5,0,0,0"
                                                         Background="Transparent"
+                                                        HorizontalAlignment="Right"
                                                         BorderThickness="0"
+                                                        ToolTip="{x:Static p:Resources.RequiredPropertiesDeleteRequiredPropertyToolTip}"
                                                         Command="{Binding ElementName=DynamoPreferencesWindow, Path=DataContext.DeleteRequiredPropertyCommand}"
                                                         CommandParameter="{Binding .}"
                                                         Cursor="Hand">
@@ -962,6 +990,25 @@
                                                             </ControlTemplate>
                                                         </Button.Template>
                                                     </Button>
+                                                    <TextBox
+                                                        x:Name="RequiredPropertyValueTextBox"
+                                                        Grid.Row="1"
+                                                        Grid.Column="0"
+                                                        Grid.ColumnSpan="2"
+                                                        FontWeight="Normal"
+                                                        Width="Auto"
+                                                        Height="25"
+                                                        Margin="0"
+                                                        Padding="3"
+                                                        HorizontalAlignment="Stretch"
+                                                        VerticalContentAlignment="Center"
+                                                        Background="{StaticResource PreferencesWindowItemDarkerBackgroundColor}"
+                                                        BorderBrush="Transparent"
+                                                        Foreground="{StaticResource PreferencesWindowFontColor}"
+                                                        IsEnabled="{Binding ValueIsGlobal, UpdateSourceTrigger=PropertyChanged}"
+                                                        MaxLength="100"
+                                                        Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                        Visibility="{Binding ValueIsGlobal, Converter={StaticResource BooleanToVisibilityConverter}, UpdateSourceTrigger=PropertyChanged}" />
                                                 </Grid>
                                             </DataTemplate>
                                         </ListView.ItemTemplate>

@@ -123,9 +123,10 @@
 
                 <HeaderedContentControl Header="Description">
                     <TextBox
+                        MaxLength="500"
                         Style="{StaticResource TextBoxStyle}"
                         Text="{Binding GraphDescription, Mode=TwoWay, FallbackValue='Graph Description'}"
-                        TextWrapping="WrapWithOverflow" />
+                        TextWrapping="Wrap" />
                 </HeaderedContentControl>
 
                 <HeaderedContentControl Header="Image">
@@ -137,16 +138,18 @@
 
                 <HeaderedContentControl Header="Author Name">
                     <TextBox
+                        MaxLength="100"
                         Style="{StaticResource TextBoxStyle}"
                         Text="{Binding GraphAuthor, Mode=TwoWay}"
-                        TextWrapping="WrapWithOverflow" />
+                        TextWrapping="Wrap" />
                 </HeaderedContentControl>
 
                 <HeaderedContentControl Header="Learn more URL">
                     <TextBox
                         Name="UriTextBox"
+                        MaxLength="200"
                         MouseDoubleClick="TextBox_MouseDoubleClick"
-                        TextWrapping="WrapWithOverflow"
+                        TextWrapping="Wrap"
                         Validation.ErrorTemplate="{StaticResource ResourceKey=TextBoxErrorTemplate}">
                         <TextBox.Text>
                             <Binding
@@ -185,10 +188,10 @@
                     Background="Transparent"
                     BorderBrush="Transparent"
                     BorderThickness="0"
-                    ItemsSource="{Binding RequiredProperties, UpdateSourceTrigger=PropertyChanged}"
+                    ItemsSource="{Binding ExtensionRequiredProperties, UpdateSourceTrigger=PropertyChanged}"
                     KeyboardNavigation.TabNavigation="Continue"
                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                    Visibility="{Binding RequiredPropertiesVisibility, UpdateSourceTrigger=PropertyChanged}">
+                    Visibility="{Binding ExtensionRequiredPropertiesVisibility, UpdateSourceTrigger=PropertyChanged}">
                     <ListView.ItemTemplate>
                         <DataTemplate>
                             <Grid HorizontalAlignment="Stretch">
@@ -203,16 +206,17 @@
                                     Background="Transparent"
                                     IsEnabled="False"
                                     Style="{StaticResource HeaderStyle}"
-                                    Text="{Binding RequiredPropertyKey, UpdateSourceTrigger=PropertyChanged}"
+                                    Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}"
                                     TextWrapping="Wrap" />
                                 <TextBox
                                     x:Name="RequiredPropertyValueTextBox"
                                     Grid.Row="1"
                                     Margin="0,5"
                                     CaretBrush="White"
+                                    IsReadOnly="{Binding IsReadOnly, UpdateSourceTrigger=PropertyChanged}"
                                     MaxLength="100"
                                     Style="{StaticResource TextBoxStyle}"
-                                    Text="{Binding RequiredPropertyValue, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                    Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                     TextWrapping="Wrap" />
                             </Grid>
                         </DataTemplate>
@@ -259,7 +263,8 @@
                     Background="Transparent"
                     BorderBrush="Transparent"
                     BorderThickness="0"
-                    ItemsSource="{Binding CustomProperties}" />
+                    ItemsSource="{Binding CustomProperties}"
+                    KeyboardNavigation.TabNavigation="Continue" />
             </Grid>
         </Grid>
     </ScrollViewer>

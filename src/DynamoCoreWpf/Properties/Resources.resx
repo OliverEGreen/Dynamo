@@ -2437,6 +2437,15 @@ Uninstall the following packages: {0}?</value>
 	<data name="RequiredPropertiesDuplicateKeyWarning" xml:space="preserve">
     <value>Required Properties must have unique names. Any non-unique names will be discarded when this window closes.</value>
   </data>
+	<data name="RequiredPropertiesAddRequiredPropertyToolTip" xml:space="preserve">
+    <value>Create a new Required Property.</value>
+  </data>
+	<data name="RequiredPropertiesDeleteRequiredPropertyToolTip" xml:space="preserve">
+    <value>Deletes this Required Property.</value>
+  </data>
+	<data name="RequiredPropertiesToggleGlobalValueToolTip" xml:space="preserve">
+    <value>Toggles whether this Required Property's value is set globally for all Dynamo graphs or per-graph.</value>
+  </data>
 	<data name="PackagePathAddPathButtonName" xml:space="preserve">
     <value>Add Paths</value>
   </data>

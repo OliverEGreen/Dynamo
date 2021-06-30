@@ -5155,6 +5155,24 @@ namespace Dynamo.Wpf.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Create a new Required Property..
+        /// </summary>
+        public static string RequiredPropertiesAddRequiredPropertyToolTip {
+            get {
+                return ResourceManager.GetString("RequiredPropertiesAddRequiredPropertyToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Deletes this Required Property..
+        /// </summary>
+        public static string RequiredPropertiesDeleteRequiredPropertyToolTip {
+            get {
+                return ResourceManager.GetString("RequiredPropertiesDeleteRequiredPropertyToolTip", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Required Properties must have unique names. Any non-unique names will be discarded when this window closes..
         /// </summary>
         public static string RequiredPropertiesDuplicateKeyWarning {
@@ -5169,6 +5187,15 @@ namespace Dynamo.Wpf.Properties {
         public static string RequiredPropertiesExpanderName {
             get {
                 return ResourceManager.GetString("RequiredPropertiesExpanderName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Toggles whether this Required Property&apos;s value is set globally for all Dynamo graphs or per-graph..
+        /// </summary>
+        public static string RequiredPropertiesToggleGlobalValueToolTip {
+            get {
+                return ResourceManager.GetString("RequiredPropertiesToggleGlobalValueToolTip", resourceCulture);
             }
         }
         

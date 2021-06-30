@@ -422,17 +422,18 @@ namespace Dynamo.Configuration
         /// </summary>
         public bool ShowRunPreview { get; set; }
 
+        
+        private ObservableCollection<RequiredProperty> requiredProperties;
         /// <summary>
-        /// Collection of the names of the required properties, as set in the DynamoSettings file
+        /// Collection of RequiredProperties, as set in the DynamoSettings file
         /// </summary>
-        private ObservableCollection<string> requiredPropertyNames;
-        public ObservableCollection<string> RequiredPropertyNames
+        public ObservableCollection<RequiredProperty> RequiredProperties
         {
-            get => requiredPropertyNames;
+            get => requiredProperties;
             set
             {
-                requiredPropertyNames = value;
-                RaisePropertyChanged(nameof(RequiredPropertyNames));
+                requiredProperties = value;
+                RaisePropertyChanged(nameof(RequiredProperties));
             }
         }
 
@@ -483,7 +484,7 @@ namespace Dynamo.Configuration
             EnableNodeAutoComplete = true;
             DefaultPythonEngine = string.Empty;
             ViewExtensionSettings = new List<ViewExtensionSettings>();
-            RequiredPropertyNames = new ObservableCollection<string>();
+            RequiredProperties = new ObservableCollection<RequiredProperty>();
         }
 
         /// <summary>
