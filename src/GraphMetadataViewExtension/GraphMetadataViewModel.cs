@@ -289,6 +289,9 @@ namespace Dynamo.GraphMetadata
             IsRequiredPropertiesVisible = RequiredProperties != null && RequiredProperties.Count > 0;
         }
 
+        /// <summary>
+        /// Called when the current Dynamo workspace changes. Resets the GraphValue of all RequiredProperties
+        /// </summary>
         private void ClearRequiredPropertyValues()
         {
             foreach (RequiredProperty requiredProperty in RequiredProperties)
