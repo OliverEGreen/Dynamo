@@ -5,13 +5,11 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Windows;
 using System.Windows.Media.Imaging;
 using Dynamo.Configuration;
 using Dynamo.Core;
 using Dynamo.Graph.Workspaces;
 using Dynamo.GraphMetadata.Controls;
-using Dynamo.GraphMetadata.Models;
 using Dynamo.UI.Commands;
 using Dynamo.Wpf.Extensions;
 
@@ -23,13 +21,19 @@ namespace Dynamo.GraphMetadata
         private readonly GraphMetadataViewExtension extension;
         private HomeWorkspaceModel currentWorkspace;
 
-        private Visibility extensionRequiredPropertiesVisibilityVisibility = Visibility.Collapsed;
-        private ObservableCollection<ExtensionRequiredProperty> extensionRequiredProperties;
+        private bool isRequiredPropertiesVisible = false;
+        private DelegateCommand addCustomPropertyCommand;
+        private ObservableCollection<CustomPropertyControl> customProperties;
+        private ObservableCollection<RequiredProperty> requiredProperties;
 
         /// <summary>
         /// Command used to add new custom properties to the CustomProperty collection
         /// </summary>
-        public DelegateCommand AddCustomPropertyCommand { get; set; }
+        public DelegateCommand AddCustomPropertyCommand
+        {
+            get => addCustomPropertyCommand;
+            set => addCustomPropertyCommand = value;
+        }
 
 
         /// <summary>
@@ -105,13 +109,17 @@ namespace Dynamo.GraphMetadata
             }
         }
 
-        public Visibility ExtensionRequiredPropertiesVisibility
+        /// <summary>
+        /// Controls whether RequiredProperties are displayed in the GraphMetadataViewExtension.
+        /// When there are no RequiredProperties, this section collapses.
+        /// </summary>
+        public bool IsRequiredPropertiesVisible
         {
-            get => extensionRequiredPropertiesVisibilityVisibility;
+            get => isRequiredPropertiesVisible;
             set
             {
-                extensionRequiredPropertiesVisibilityVisibility = value;
-                RaisePropertyChanged(nameof(ExtensionRequiredPropertiesVisibility));
+                isRequiredPropertiesVisible = value;
+                RaisePropertyChanged(nameof(IsRequiredPropertiesVisible));
             }
         }
 
@@ -119,20 +127,26 @@ namespace Dynamo.GraphMetadata
         /// <summary>
         /// Collection of CustomProperties
         /// </summary>
-        public ObservableCollection<CustomPropertyControl> CustomProperties { get; set; }
+        public ObservableCollection<CustomPropertyControl> CustomProperties
+        {
+            get => customProperties;
+            set => customProperties = value;
+        }
 
         /// <summary>
-        /// Collection of Properties Required by this ViewExtension
+        /// Collection of RequiredProperties
         /// </summary>
-        public ObservableCollection<ExtensionRequiredProperty> ExtensionRequiredProperties
+        public ObservableCollection<RequiredProperty> RequiredProperties
         {
-            get => extensionRequiredProperties;
+            get => requiredProperties;
+
             set
             {
-                extensionRequiredProperties = value;
-                RaisePropertyChanged(nameof(ExtensionRequiredProperties));
+                requiredProperties = value;
+                RaisePropertyChanged(nameof(RequiredProperties));
             }
         }
+
 
         public GraphMetadataViewModel(ViewLoadedParams viewLoadedParams, GraphMetadataViewExtension extension)
         {
@@ -148,11 +162,25 @@ namespace Dynamo.GraphMetadata
             this.viewLoadedParams.CurrentWorkspaceCleared += OnCurrentWorkspaceChanged;
             
             CustomProperties = new ObservableCollection<CustomPropertyControl>();
-            ExtensionRequiredProperties = new ObservableCollection<ExtensionRequiredProperty>();
-            ExtensionRequiredProperties.CollectionChanged += UpdateRequiredPropertiesVisibility;
+            RequiredProperties = new ObservableCollection<RequiredProperty>();
 
-            viewLoadedParams.PreferenceSettings.RequiredProperties.CollectionChanged += RequiredPropertyNamesOnCollectionChanged;
+            RequiredProperties.CollectionChanged += UpdateRequiredPropertiesVisibility;
+            viewLoadedParams.PreferenceSettings.RequiredProperties.CollectionChanged += RequiredPropertiesOnCollectionChanged;
 
+            foreach (RequiredProperty requiredProperty in viewLoadedParams.PreferenceSettings.RequiredProperties)
+            {
+                requiredProperty.PropertyChanged += RequiredPropertyOnPropertyChanged;
+            }
+
+            InitializeCommands();
+        }
+
+        /// <summary>
+        /// Reads the DynamoSettings.xml file and creates new RequiredProperties by *key only*.
+        /// All values are set in the GraphMetadataViewExtension OnWorkspaceOpen event handler.
+        /// </summary>
+        private void InitializeRequiredProperties()
+        {
             // To prevent duplicate keys being added
             List<string> resolvedKeys = new List<string>();
 
@@ -160,71 +188,53 @@ namespace Dynamo.GraphMetadata
             foreach (RequiredProperty requiredProperty in viewLoadedParams.PreferenceSettings.RequiredProperties)
             {
                 // Removing blanks and duplicates
-                if(string.IsNullOrEmpty(requiredProperty.Key) || resolvedKeys.Contains(requiredProperty.Key)) continue;
+                if (string.IsNullOrEmpty(requiredProperty.Key) || resolvedKeys.Contains(requiredProperty.Key)) continue;
 
-                // We only want to set values when RequiredProperties' values are defined globally.
-                string requiredPropertyValue = requiredProperty.ValueIsGlobal ? requiredProperty.Value : null;
+                string value = requiredProperty.ValueIsGlobal ? requiredProperty.GlobalValue : requiredProperty.GraphValue;
 
-                ExtensionRequiredProperty extensionRequiredProperty = new ExtensionRequiredProperty(requiredProperty.UniqueId)
+                RequiredProperty requiredPropertyToUpdate = RequiredProperties
+                    .FirstOrDefault(x => x.Key == requiredProperty.Key);
+
+                if (requiredPropertyToUpdate != null)
                 {
-                    Key = requiredProperty.Key,
-                    Value = requiredPropertyValue,
-                    IsReadOnly = requiredProperty.ValueIsGlobal
-                };
-
-                requiredProperty.PropertyChanged += RequiredPropertyOnPropertyChanged;
-
-                ExtensionRequiredProperties.Add(extensionRequiredProperty);
-                resolvedKeys.Add(extensionRequiredProperty.Key);
-            }
-            
-            InitializeCommands();
-        }
-
-        private void RequiredPropertyOnPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (!(sender is RequiredProperty requiredProperty)) return;
-
-            ExtensionRequiredProperty extensionRequiredProperty = ExtensionRequiredProperties.FirstOrDefault(x => x.UniqueId == requiredProperty.UniqueId);
-            if (extensionRequiredProperty == null) return;
-
-            switch (e.PropertyName)
-            {
-                case "Key":
-                    // The Preferences window can rename any ExtensionRequiredProperty / RequiredProperty key
-                    if (string.IsNullOrEmpty(requiredProperty.Key)) return;
-                    extensionRequiredProperty.Key = requiredProperty.Key;
-                    break;
-                case "Value":
-                    // The Preferences window can only set a value if it's being set globally
-                    if (!requiredProperty.ValueIsGlobal || string.IsNullOrEmpty(requiredProperty.Key)) return;
-                    extensionRequiredProperty.Value = requiredProperty.Value;
-                    break;
-                case "ValueIsGlobal":
-                    extensionRequiredProperty.IsReadOnly = requiredProperty.ValueIsGlobal;
-                    break;
+                    requiredPropertyToUpdate.GraphValue = requiredProperty.GraphValue;
+                }
+                else
+                {
+                    AddRequiredProperty
+                    (
+                        requiredProperty.UniqueId,
+                        requiredProperty.Key,
+                        value,
+                        requiredProperty.ValueIsGlobal,
+                        false
+                    );
+                    resolvedKeys.Add(requiredProperty.Key);
+                }
             }
         }
-
+        
         /// <summary>
         /// Sets listener to the PropertyChanged event of new RequiredProperties as they are added/removed from the PreferenceSettings
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
-        private void RequiredPropertyNamesOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void RequiredPropertiesOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.NewItems != null)
             {
                 foreach (RequiredProperty requiredProperty in e.NewItems)
                 {
                     requiredProperty.PropertyChanged += RequiredPropertyOnPropertyChanged;
-                    ExtensionRequiredProperty extensionRequiredProperty = new ExtensionRequiredProperty(requiredProperty.UniqueId)
-                    {
-                        Key = requiredProperty.Key,
-                        Value = requiredProperty.Value,
-                        IsReadOnly = requiredProperty.ValueIsGlobal
-                    };
-                    ExtensionRequiredProperties.Add(extensionRequiredProperty);
+                    
+                    AddRequiredProperty
+                    (
+                        requiredProperty.UniqueId,
+                        requiredProperty.Key,
+                        requiredProperty.GraphValue,
+                        requiredProperty.ValueIsGlobal,
+                        true
+                    );
                 }
             }
 
@@ -233,9 +243,7 @@ namespace Dynamo.GraphMetadata
                 foreach (RequiredProperty requiredProperty in e.OldItems)
                 {
                     requiredProperty.PropertyChanged -= RequiredPropertyOnPropertyChanged;
-                    ExtensionRequiredProperty extensionRequiredProperty = ExtensionRequiredProperties.FirstOrDefault(x => x.Key == requiredProperty.Key);
-                    if (extensionRequiredProperty == null) continue;
-                    ExtensionRequiredProperties.Remove(extensionRequiredProperty);
+                    DeleteRequiredProperty(requiredProperty);
                 }
             }
         }
@@ -266,6 +274,9 @@ namespace Dynamo.GraphMetadata
             }
 
             CustomProperties.Clear();
+            
+            ClearRequiredPropertyValues();
+            InitializeRequiredProperties();
         }
 
         /// <summary>
@@ -275,9 +286,15 @@ namespace Dynamo.GraphMetadata
         /// <param name="e"></param>
         private void UpdateRequiredPropertiesVisibility(object sender, NotifyCollectionChangedEventArgs e)
         {
-            ExtensionRequiredPropertiesVisibility = ExtensionRequiredProperties == null || ExtensionRequiredProperties.Count < 1
-                ? Visibility.Collapsed
-                : Visibility.Visible;
+            IsRequiredPropertiesVisible = RequiredProperties != null && RequiredProperties.Count > 0;
+        }
+
+        private void ClearRequiredPropertyValues()
+        {
+            foreach (RequiredProperty requiredProperty in RequiredProperties)
+            {
+                requiredProperty.GraphValue = null;
+            }
         }
 
         private static BitmapImage ImageFromBase64(string b64string)
@@ -345,6 +362,68 @@ namespace Dynamo.GraphMetadata
             if (markChange)
             {
                 MarkCurrentWorkspaceModified();
+            }
+        }
+
+        /// <summary>
+        /// Takes care of all the setup for RequiredProperties on the ViewExtension, including
+        /// wiring up event handlers and determining whether the current workspace has changed.
+        /// </summary>
+        /// <param name="uniqueId"></param>
+        /// <param name="propertyKey"></param>
+        /// <param name="propertyValue"></param>
+        /// <param name="isValueGlobal"></param>
+        /// <param name="markChange"></param>
+        internal void AddRequiredProperty(string uniqueId, string propertyKey, string propertyValue, bool isValueGlobal, bool markChange = true)
+        {
+            RequiredProperty requiredProperty = new RequiredProperty
+            {
+                UniqueId = uniqueId,
+                Key = propertyKey,
+                GraphValue = propertyValue,
+                ValueIsGlobal = isValueGlobal
+            };
+
+            RequiredProperties.Add(requiredProperty);
+
+            if (markChange)
+            {
+                MarkCurrentWorkspaceModified();
+            }
+        }
+
+        internal void DeleteRequiredProperty(RequiredProperty requiredProperty)
+        {
+            RequiredProperty requiredPropertyToDelete = RequiredProperties
+                .FirstOrDefault(x => x.UniqueId == requiredProperty.UniqueId);
+
+            if (requiredPropertyToDelete == null) return;
+
+            RequiredProperties.Remove(requiredPropertyToDelete);
+
+            MarkCurrentWorkspaceModified();
+        }
+
+        private void RequiredPropertyOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (!(sender is RequiredProperty requiredProperty)) return;
+
+            RequiredProperty requiredPropertyToUpdate = RequiredProperties
+                .FirstOrDefault(x => x.UniqueId == requiredProperty.UniqueId);
+
+            if (requiredPropertyToUpdate == null) return;
+
+            switch (e.PropertyName)
+            {
+                case "Key":
+                    requiredPropertyToUpdate.Key = requiredProperty.Key;
+                    break;
+                case "GraphValue":
+                    requiredPropertyToUpdate.GraphValue= requiredProperty.GraphValue;
+                    break;
+                case "ValueIsGlobal":
+                    requiredPropertyToUpdate.ValueIsGlobal = requiredProperty.ValueIsGlobal;
+                    break;
             }
         }
 

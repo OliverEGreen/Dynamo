@@ -2437,6 +2437,9 @@ Uninstall the following packages: {0}?</value>
 	<data name="RequiredPropertiesDuplicateKeyWarning" xml:space="preserve">
     <value>Required Properties must have unique names. Any non-unique names will be discarded when this window closes.</value>
   </data>
+	<data name="RequiredPropertiesAddRequiredPropertyButtonText" xml:space="preserve">
+    <value>Add Required Property</value>
+  </data>
 	<data name="RequiredPropertiesAddRequiredPropertyToolTip" xml:space="preserve">
     <value>Create a new Required Property.</value>
   </data>

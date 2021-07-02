@@ -17,7 +17,6 @@ using Dynamo.PackageManager;
 using Dynamo.UI.Commands;
 using Dynamo.Wpf.ViewModels.Core.Converters;
 using Res = Dynamo.Wpf.Properties.Resources;
-using Visibility = System.Windows.Visibility;
 
 namespace Dynamo.ViewModels
 {
@@ -66,6 +65,7 @@ namespace Dynamo.ViewModels
         private DynamoViewModel dynamoViewModel;
         private bool isWarningEnabled;
         private GeometryScalingOptions optionsGeometryScale = null;
+        private bool isDuplicateKeyWarningVisible;
         #endregion Private Properties
 
         public GeometryScaleSize ScaleSize { get; set; }
@@ -712,34 +712,21 @@ namespace Dynamo.ViewModels
         /// </summary>
         public PackagePathViewModel PackagePathsViewModel { get; set; }
 
-
-        private ObservableCollection<RequiredProperty> requiredProperties;
-        
         /// <summary>
         /// The collection of all RequiredProperties found in the DynamoSettings XML file
         /// </summary>
-        public ObservableCollection<RequiredProperty> RequiredProperties
-        {
-            get => requiredProperties;
-            set
-            {
-                requiredProperties = value;
-                RaisePropertyChanged(nameof(RequiredProperties));
-            }
-        }
-        
-        private Visibility requiredPropertiesDuplicateKeyWarningVisibility;
+        public ObservableCollection<RequiredProperty> RequiredProperties => this.preferenceSettings.RequiredProperties;
         
         /// <summary>
         /// Sets whether the duplicate RequiredProperty keys warning is visible
         /// </summary>
-        public Visibility RequiredPropertiesDuplicateKeyWarningVisibility
+        public bool IsDuplicateKeyWarningVisible
         {
-            get => requiredPropertiesDuplicateKeyWarningVisibility;
+            get => isDuplicateKeyWarningVisible;
             set
             {
-                requiredPropertiesDuplicateKeyWarningVisibility = value;
-                RaisePropertyChanged(nameof(RequiredPropertiesDuplicateKeyWarningVisibility));
+                isDuplicateKeyWarningVisible = value;
+                RaisePropertyChanged(nameof(IsDuplicateKeyWarningVisible));
             }
         }
 
@@ -756,13 +743,13 @@ namespace Dynamo.ViewModels
             this.dynamoViewModel = dynamoViewModel;
 
             PythonEnginesList = new ObservableCollection<string>();
-            PythonEnginesList.Add(Res.DefaultPythonEngineNone);
+            PythonEnginesList.Add(Wpf.Properties.Resources.DefaultPythonEngineNone);
             AddPythonEnginesOptions();
 
             //Sets SelectedPythonEngine.
             //If the setting is empty it corresponds to the default python engine
             _ = preferenceSettings.DefaultPythonEngine == string.Empty ?
-                SelectedPythonEngine = Res.DefaultPythonEngineNone :
+                SelectedPythonEngine = Wpf.Properties.Resources.DefaultPythonEngineNone :
                 SelectedPythonEngine = preferenceSettings.DefaultPythonEngine;
 
             SelectedPackagePathForInstall = preferenceSettings.SelectedPackagePathForInstall;
@@ -833,17 +820,94 @@ namespace Dynamo.ViewModels
             PackagePathsViewModel = new PackagePathViewModel(packageLoader, loadPackagesParams, customNodeManager);
 
             this.PropertyChanged += Model_PropertyChanged;
+            this.AddRequiredPropertyCommand = new DelegateCommand(preferenceSettings.AddRequiredProperty);
+            this.DeleteRequiredPropertyCommand = new DelegateCommand(preferenceSettings.DeleteRequiredProperty);
+            this.ToggleRequiredPropertyIsGlobalCommand = new DelegateCommand(preferenceSettings.ToggleRequiredPropertyIsGlobal);
 
             InitializeRequiredProperties();
-
-            this.AddRequiredPropertyCommand = new DelegateCommand(AddRequiredProperty);
-            this.DeleteRequiredPropertyCommand = new DelegateCommand(DeleteRequiredPropertyKey);
-            this.ToggleRequiredPropertyIsGlobalCommand = new DelegateCommand(ToggleRequiredPropertyIsGlobal);
-
-            // RequiredProperties cannot have duplicate keys
-            CheckDuplicateRequiredPropertyKeysExist();
         }
 
+        #region RequiredProperties
+
+        /// <summary>
+        /// When Dynamo first loads, sets up the event watching/handling for RequiredProperties as they are loaded
+        /// in from the Dynamo Settings.xml file, and tidies up any RequiredProperties with empty/whitespace keys.
+        /// </summary>
+        private void InitializeRequiredProperties()
+        {
+            TidyUpRequiredProperties();
+
+            foreach (RequiredProperty requiredProperty in preferenceSettings.RequiredProperties)
+            {
+                requiredProperty.PropertyChanged += RequiredPropertyOnPropertyChanged;
+            }
+            preferenceSettings.RequiredProperties.CollectionChanged += RequiredPropertiesOnCollectionChanged;
+        }
+
+        private void RequiredPropertiesOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null)
+            {
+                foreach (RequiredProperty requiredProperty in e.NewItems)
+                {
+                    requiredProperty.PropertyChanged += RequiredPropertyOnPropertyChanged;
+                }
+            }
+
+            if (e.OldItems != null)
+            {
+                foreach (RequiredProperty requiredProperty in e.OldItems)
+                {
+                    requiredProperty.PropertyChanged -= RequiredPropertyOnPropertyChanged;
+                }
+            }
+            CheckForRequiredPropertyDuplicateKeys();
+        }
+
+        /// <summary>
+        /// Needs to change every time any RequiredProperty key is edited, to warn the user if there are duplicate keys.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void RequiredPropertyOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            CheckForRequiredPropertyDuplicateKeys();
+        }
+
+        /// <summary>
+        /// RequiredProperties need to have unique keys.
+        /// Checks whether the user has added any RequiredProperties with keys that are already taken.
+        /// </summary>
+        /// <returns></returns>
+        private bool CheckForRequiredPropertyDuplicateKeys()
+        {
+            bool duplicatesExist = RequiredProperties
+                .Where(x => x.Key.Length > 0)
+                .GroupBy(x => x.Key)
+                .Any(group => group.Count() > 1);
+
+            // Setting whether the warning is visible or not
+            IsDuplicateKeyWarningVisible = duplicatesExist;
+            return duplicatesExist;
+        }
+
+        /// <summary>
+        /// Fires when Dynamo loads, used to clear out any RequiredProperties loaded in from the XML that
+        /// either have empty or whitespace keys.
+        /// </summary>
+        private void TidyUpRequiredProperties()
+        {
+            List<RequiredProperty> requiredPropertiesToTidyUp = RequiredProperties
+                .Where(x => string.IsNullOrWhiteSpace(x.Key)).ToList();
+
+            foreach (RequiredProperty requiredProperty in requiredPropertiesToTidyUp)
+            {
+                preferenceSettings.RequiredProperties.Remove(requiredProperty);
+            }
+        }
+
+        #endregion
+        
         /// <summary>
         /// Listen for the PropertyChanged event and updates the saved changes label accordingly
         /// </summary>
@@ -927,69 +991,7 @@ namespace Dynamo.ViewModels
             //Sets the last saved time in the en-US format
             SavedChangesTooltip = Res.PreferencesViewSavedChangesTooltip + DateTime.Now.ToString(@"hh:mm tt", new CultureInfo("en-US"));
         }
-
-        internal bool CheckDuplicateRequiredPropertyKeysExist()
-        {
-            var numberOfKeys = RequiredProperties.Count;
-            var numberOfUniqueKeys = RequiredProperties.Select(x => x.Key).Distinct().Count();
-            // If there aren't at least two keys we can't have duplicates
-            bool duplicatesExist = numberOfUniqueKeys != numberOfKeys && numberOfKeys >= 2;
-            
-            UpdateRequiredPropertiesDuplicateKeyWarningVisibility(duplicatesExist);
-            return duplicatesExist;
-        }
-
-        internal void UpdateRequiredPropertiesDuplicateKeyWarningVisibility(bool visible)
-        {
-            RequiredPropertiesDuplicateKeyWarningVisibility = visible ? Visibility.Visible : Visibility.Collapsed;
-        }
-
-        /// <summary>
-        /// Updates the RequiredProperties list in the PreferenceSettings
-        /// </summary>
-        internal void UpdatePreferenceSettingsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            // It's an edge case, but adding a new key could cause duplicate keys to exist. 
-            // Likewise, we'd want a duplicate key being removed to fire this event
-            if (CheckDuplicateRequiredPropertyKeysExist()) return;
-
-            if (e.NewItems != null)
-            {
-                foreach (RequiredProperty requiredProperty in e.NewItems)
-                {
-                    preferenceSettings.RequiredProperties.Add(requiredProperty);
-                }
-            }
-
-            if (e.OldItems != null)
-            {
-                foreach (RequiredProperty requiredProperty in e.OldItems)
-                {
-                    preferenceSettings.RequiredProperties.Remove(requiredProperty);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Updates the RequiredProperties list in the PreferenceSettings
-        /// </summary>
-        internal void UpdatePreferenceSettingsPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (!(sender is RequiredProperty requiredProperty)) return;
-            if (string.IsNullOrEmpty(requiredProperty.Key)) return;
-            RequiredProperty requiredPropertyToUpdate = preferenceSettings.RequiredProperties.FirstOrDefault(x => x.Key == requiredProperty.Key);
-            if (requiredPropertyToUpdate == null) return;
-
-            // RequiredProperties cannot have duplicate keys
-            if (CheckDuplicateRequiredPropertyKeysExist()) return;
-
-            // If no change is required
-            //if (requiredPropertyToUpdate.Key == requiredProperty.Key) return;
-            string blah = requiredProperty.Key;
-            // If a change is required, the RequiredProperty's key is updated
-            // requiredPropertyToUpdate.Key = requiredProperty.Key;
-        }
-
+        
         /// <summary>
         /// This method will remove the current Style selected from the Styles list
         /// </summary>
@@ -1030,61 +1032,6 @@ namespace Dynamo.ViewModels
             Random r = new Random();
             Color color = Color.FromArgb(255, (byte)r.Next(), (byte)r.Next(), (byte)r.Next());
             return ColorTranslator.ToHtml(color).Replace("#", "");
-        }
-
-        /// <summary>
-        /// Loads the RequiredProperties from the DynamoSettings.xml file
-        /// </summary>
-        private void InitializeRequiredProperties()
-        {
-            RequiredProperties = new ObservableCollection<RequiredProperty>();
-
-            foreach (RequiredProperty requiredProperty in preferenceSettings.RequiredProperties)
-            {
-                //Skipping over any properties whose keys are empty.
-                if (string.IsNullOrEmpty(requiredProperty.Key)) continue;
-
-                requiredProperty.PropertyChanged += UpdatePreferenceSettingsPropertyChanged;
-                RequiredProperties.Add(requiredProperty);
-            }
-            RequiredProperties.CollectionChanged += UpdatePreferenceSettingsCollectionChanged;
-        }
-
-        /// <summary>
-        /// Adds a RequiredProperty to the local collection, triggered via the View
-        /// </summary>
-        /// <param name="obj"></param>
-        private void AddRequiredProperty(object obj)
-        {
-            RequiredProperty requiredProperty = new RequiredProperty
-            {
-                Key = $"Required Property {RequiredProperties.Count + 1}",
-                Value = ""
-            };
-            requiredProperty.PropertyChanged += UpdatePreferenceSettingsPropertyChanged;
-            RequiredProperties.Add(requiredProperty);
-        }
-
-        /// <summary>
-        /// Deletes a RequiredProperty from the local collection, triggered via the View
-        /// </summary>
-        /// <param name="obj"></param>
-        private void DeleteRequiredPropertyKey(object obj)
-        {
-            if (!(obj is RequiredProperty requiredProperty)) return;
-            requiredProperty.PropertyChanged -= UpdatePreferenceSettingsPropertyChanged;
-            if (!RequiredProperties.Select(x => x.Key).Contains(requiredProperty.Key)) return;
-            RequiredProperties.Remove(requiredProperty);
-        }
-
-        /// <summary>
-        /// Toggles whether a RequiredProperty has its value set globally, or per-graph
-        /// </summary>
-        /// <param name="obj"></param>
-        private void ToggleRequiredPropertyIsGlobal(object obj)
-        {
-            if (!(obj is RequiredProperty requiredProperty)) return;
-            requiredProperty.ValueIsGlobal = !requiredProperty.ValueIsGlobal;
         }
     }
 

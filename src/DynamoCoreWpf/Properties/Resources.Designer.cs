@@ -5155,6 +5155,15 @@ namespace Dynamo.Wpf.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Add Required Property.
+        /// </summary>
+        public static string RequiredPropertiesAddRequiredPropertyButtonText {
+            get {
+                return ResourceManager.GetString("RequiredPropertiesAddRequiredPropertyButtonText", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Create a new Required Property..
         /// </summary>
         public static string RequiredPropertiesAddRequiredPropertyToolTip {

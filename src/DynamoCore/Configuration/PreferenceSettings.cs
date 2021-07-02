@@ -592,5 +592,42 @@ namespace Dynamo.Configuration
                 NamespacesToExcludeFromLibrarySpecified = true;
             }
         }
+
+        /// <summary>
+        /// Adds a RequiredProperty to the local collection, triggered via the View
+        /// </summary>
+        /// <param name="obj"></param>
+        internal void AddRequiredProperty(object obj)
+        {
+            RequiredProperty requiredProperty = new RequiredProperty
+            {
+                Key = $"Required Property {RequiredProperties.Count + 1}"
+            };
+            //requiredProperty.PropertyChanged += UpdatePreferenceSettingsPropertyChanged;
+            RequiredProperties.Add(requiredProperty);
+        }
+
+        /// <summary>
+        /// Deletes a RequiredProperty from the local collection, triggered via the View
+        /// </summary>
+        /// <param name="obj"></param>
+        internal void DeleteRequiredProperty(object obj)
+        {
+            if (!(obj is RequiredProperty requiredProperty)) return;
+            //if (!RequiredProperties.Select(x => x.UniqueId).Contains(requiredProperty.UniqueId)) return;
+            RequiredProperties.Remove(requiredProperty);
+        }
+
+        /// <summary>
+        /// Toggles whether a RequiredProperty has its value set globally, or per-graph.
+        /// When global, both the RequiredProperty Key and Value are saved in the DynamoSettings.xml file.
+        /// Global values are loaded in when a graph is opened and cannot be edited via the GraphMetadataViewExtension.
+        /// </summary>
+        /// <param name="obj"></param>
+        internal void ToggleRequiredPropertyIsGlobal(object obj)
+        {
+            if (!(obj is RequiredProperty requiredProperty)) return;
+            requiredProperty.ValueIsGlobal = !requiredProperty.ValueIsGlobal;
+        }
     }
 }

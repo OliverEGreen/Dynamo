@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Windows.Controls;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
 using Dynamo.Extensions;
 using Dynamo.Graph;
 using Dynamo.GraphMetadata.Properties;
@@ -11,9 +9,6 @@ using Dynamo.Wpf.Extensions;
 using System.Windows;
 using Dynamo.Configuration;
 using Dynamo.Graph.Workspaces;
-using Dynamo.GraphMetadata.Controls;
-using Dynamo.GraphMetadata.Models;
-using Dynamo.ViewModels;
 
 namespace Dynamo.GraphMetadata
 {
@@ -70,74 +65,62 @@ namespace Dynamo.GraphMetadata
         /// <param name="extensionData"></param>
         public void OnWorkspaceOpen(Dictionary<string, string> extensionData)
         {
-            // There are multiple places where ExtensionRequiredProperties' values may be set
+            // There are multiple places where RequiredProperties' values may be set
             // If the value is defined globally, this is saved in the DynamoSettings.xml file and is loaded
             // in the constructor of the GraphMetadataViewModel
-            // However, ExtensionRequiredProperty values may also be graph-specific, in which case they live in the 
+            // However, RequiredProperty values may also be graph-specific, in which case they live in the 
             // JSON data of the .dyn file format. In this case, they are loaded in here.
             
-            // For reference, we load the list of ExtensionRequiredProperty names as loaded in from the XML
-            List<string> requiredPropertyKeys = this.viewModel.ExtensionRequiredProperties.Select(x => x.Key).ToList();
-
-            Dictionary<string, string> extensionRequiredPropertiesToBuild = new Dictionary<string, string>();
-            Dictionary<string, string> customPropertiesToBuild = new Dictionary<string, string>();
-
-            foreach (KeyValuePair<string, string> keyValuePair in extensionData)
-            {
-                if (string.IsNullOrEmpty(keyValuePair.Key)) continue;
-
-                // Should a key conflict arise between an ExtensionRequiredProperty and a CustomProperty, the ExtensionRequiredProperty takes primacy
-                if (requiredPropertyKeys.Contains(keyValuePair.Key))
-                {
-                    // Removing any duplicates
-                    if (extensionRequiredPropertiesToBuild.ContainsKey(keyValuePair.Key)) continue;
-                    extensionRequiredPropertiesToBuild.Add(keyValuePair.Key, keyValuePair.Value);
-                }
-                else
-                {
-                    // Removing any duplicates
-                    if (customPropertiesToBuild.ContainsKey(keyValuePair.Key)) continue;
-                    customPropertiesToBuild.Add(keyValuePair.Key, keyValuePair.Value);
-                }
-            }
-
-            // To prevent duplicate keys being added
-            List<string> resolvedKeys = new List<string>();
+            List<string> xmlRequiredPropertyKeys = this.viewLoadedParamsReference.PreferenceSettings.RequiredProperties
+                .Select(x => x.Key)
+                .ToList();
             
-            foreach (KeyValuePair<string, string> keyValuePair in extensionRequiredPropertiesToBuild)
+            Dictionary<string,string> dynRequiredProperties = extensionData
+                .Where(x => xmlRequiredPropertyKeys.Contains(x.Key) && !string.IsNullOrWhiteSpace(x.Key))
+                .ToDictionary(x => x.Key, x => x.Value);
+
+            Dictionary<string, string> dynCustomProperties = extensionData
+                .Where(x => !xmlRequiredPropertyKeys.Contains(x.Key) && !string.IsNullOrWhiteSpace(x.Key))
+                .ToDictionary(x => x.Key, x => x.Value);
+
+            // The keys of RequiredProperties whose values are set globally and therefore have already been fully resolved.
+            List<string> resolvedKeys = viewModel.RequiredProperties
+                .Where(x => x.ValueIsGlobal)
+                .Select(x => x.Key)
+                .ToList();
+
+            // Instantiating any RequiredProperties whose values are not set globally from the extensionData.
+            // RequiredProperties whose values are set globally are instantiated in the GraphMetadataViewModel.
+            foreach (RequiredProperty requiredProperty in this.viewLoadedParamsReference.PreferenceSettings.RequiredProperties)
             {
-                // Looking through the already-instantiated ExtensionRequiredProperties (from the XML) to find match by key.
-                ExtensionRequiredProperty extensionRequiredProperty = this.viewModel.ExtensionRequiredProperties.FirstOrDefault(x => x.Key == keyValuePair.Key);
+                // If this property has already been resolved we may skip over any information stored locally in the .dyn file.
+                if (resolvedKeys.Contains(requiredProperty.Key)) continue;
                 
-                // Here, we are just setting a value for the ones that have locally-defined values.
-                // However, if an already-instantiated ExtensionRequiredProperty has .IsReadOnly as false, this means its value is defined globally.
-                if (extensionRequiredProperty != null && extensionRequiredProperty.IsReadOnly && !resolvedKeys.Contains(keyValuePair.Key))
+                if (dynRequiredProperties.ContainsKey(requiredProperty.Key))
                 {
-                    // A match was found in the .dyn/JSON data and the value is defined locally. We set its value here.
-                    extensionRequiredProperty.Value = keyValuePair.Value;
-                    resolvedKeys.Add(extensionRequiredProperty.Key);
+                    RequiredProperty requiredPropertyToUpdate = viewModel.RequiredProperties
+                            .FirstOrDefault(x => x.Key == requiredProperty.Key);
+
+                    // The RequiredProperty's GraphValue is set to its locally stored value.
+                    requiredPropertyToUpdate.GraphValue = extensionData[requiredProperty.Key];
                 }
                 else
                 {
-                    // If the key is already taken by an XML-defined ExtensionRequiredProperty, we disregard anything else encountered.
-                    if (requiredPropertyKeys.Contains(keyValuePair.Key) || resolvedKeys.Contains(keyValuePair.Key)) continue;
-                    
-                    // A new ExtensionRequiredProperty is instantiated and given the key/value as defined in the .dyn/JSON data.
-                    this.viewModel.ExtensionRequiredProperties.Add(new ExtensionRequiredProperty(Guid.NewGuid().ToString())
-                    {
-                        Key = keyValuePair.Key,
-                        Value = keyValuePair.Value,
-                        IsReadOnly = false
-                    });
-                    resolvedKeys.Add(keyValuePair.Key);
+                    viewModel.AddRequiredProperty
+                    (
+                        requiredProperty.UniqueId,
+                        requiredProperty.Key,
+                        extensionData[requiredProperty.Key],
+                        requiredProperty.ValueIsGlobal,
+                        false
+                    );
                 }
             }
 
             // The instantiation of CustomProperties comes last. If there are values in the .dyn/JSON data which aren't 
-            // either globally-set or locally-set ExtensionRequiredProperties, they'll be loaded in as CustomProperties.
-            foreach (KeyValuePair<string, string> keyValuePair in customPropertiesToBuild)
+            // either globally-set or locally-set RequiredProperties, they'll be loaded in as CustomProperties.
+            foreach (KeyValuePair<string, string> keyValuePair in dynCustomProperties)
             {
-                if (resolvedKeys.Contains(keyValuePair.Key)) continue;
                 this.viewModel.AddCustomProperty(keyValuePair.Key, keyValuePair.Value, false);
             }
         }
@@ -157,9 +140,9 @@ namespace Dynamo.GraphMetadata
                 extensionData[p.PropertyName] = p.PropertyValue;
             }
 
-            foreach (ExtensionRequiredProperty extensionRequiredProperty in viewModel.ExtensionRequiredProperties)
+            foreach (RequiredProperty requiredProperty in viewModel.RequiredProperties)
             {
-                extensionData[extensionRequiredProperty.Key] = extensionRequiredProperty.Value;
+                extensionData[requiredProperty.Key] = requiredProperty.GraphValue;
             }
         }
 
