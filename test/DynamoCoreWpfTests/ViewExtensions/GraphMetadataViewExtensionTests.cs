@@ -157,5 +157,72 @@ namespace DynamoCoreWpfTests.ViewExtensions
 
             Assert.IsFalse(ViewModel.HomeSpace.HasUnsavedChanges);
         }
+
+        [Test]
+        public void PreferenceSettingsRequiredPropertiesEqualGraphMetadataViewExtensionRequiredProperties()
+        {
+            // Arrange
+            var extensionManager = View.viewExtensionManager;
+
+            var graphMetadataViewExtension = extensionManager.ViewExtensions
+                .FirstOrDefault(x => x.Name == GraphMetadataViewExtension.extensionName)
+                as GraphMetadataViewExtension;
+            
+            // Act
+            var preferenceSettingsRequiredPropertyKeys = this.ViewModel.PreferenceSettings.RequiredProperties
+                .Select(x => x.Key)
+                .ToList();
+
+            var graphMetadataViewModelRequiredPropertyKeys = graphMetadataViewExtension.viewModel.RequiredProperties
+                .Select(x => x.Key)
+                .ToList();
+            
+            // Assert
+            CollectionAssert.AreEqual(preferenceSettingsRequiredPropertyKeys, graphMetadataViewModelRequiredPropertyKeys);
+        }
+
+        [Test]
+        public void PreferenceSettingsAddRequiredProperty()
+        {
+            // Arrange
+            var preferenceSettings = this.ViewModel.PreferenceSettings;
+            
+            // Act
+            preferenceSettings.RequiredProperties.Clear();
+            preferenceSettings.AddRequiredProperty(null);
+
+            var requiredProperty = preferenceSettings.RequiredProperties.First();
+
+            // Assert
+            Assert.IsNotNull(requiredProperty);
+            Assert.That(requiredProperty.Key.Equals("Required Property 1"));
+        }
+
+        [Test]
+        public void RequiredPropertyAddedToPreferenceSettingsAppearsInViewExtension()
+        {
+            // Arrange
+            var extensionManager = View.viewExtensionManager;
+
+            var graphMetadataViewExtension = extensionManager.ViewExtensions
+                    .FirstOrDefault(x => x.Name == GraphMetadataViewExtension.extensionName)
+                as GraphMetadataViewExtension;
+
+            // Act
+            var preferenceSettings = this.ViewModel.PreferenceSettings;
+            
+            preferenceSettings.RequiredProperties.Clear();
+            graphMetadataViewExtension.viewModel.RequiredProperties.Clear();
+
+            preferenceSettings.AddRequiredProperty(null);
+            var requiredProperty = preferenceSettings.RequiredProperties.First();
+            
+            var graphMetadataViewModelRequiredPropertyKeys = graphMetadataViewExtension.viewModel.RequiredProperties
+                .Select(x => x.Key)
+                .ToList();
+            
+            // Assert
+            Assert.That(graphMetadataViewModelRequiredPropertyKeys.Contains(requiredProperty.Key));
+        }
     }
 }
