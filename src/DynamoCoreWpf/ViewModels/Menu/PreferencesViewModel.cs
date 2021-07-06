@@ -715,7 +715,7 @@ namespace Dynamo.ViewModels
         /// <summary>
         /// The collection of all RequiredProperties found in the DynamoSettings XML file
         /// </summary>
-        public ObservableCollection<RequiredProperty> RequiredProperties => this.preferenceSettings.RequiredProperties;
+        internal ObservableCollection<RequiredProperty> RequiredProperties => this.preferenceSettings.RequiredProperties;
         
         /// <summary>
         /// Sets whether the duplicate RequiredProperty keys warning is visible

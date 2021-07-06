@@ -136,7 +136,7 @@ namespace Dynamo.GraphMetadata
         /// <summary>
         /// Collection of RequiredProperties
         /// </summary>
-        public ObservableCollection<RequiredProperty> RequiredProperties
+        internal ObservableCollection<RequiredProperty> RequiredProperties
         {
             get => requiredProperties;
 
@@ -418,13 +418,13 @@ namespace Dynamo.GraphMetadata
 
             switch (e.PropertyName)
             {
-                case "Key":
+                case nameof(RequiredProperty.Key):
                     requiredPropertyToUpdate.Key = requiredProperty.Key;
                     break;
-                case "GraphValue":
+                case nameof(RequiredProperty.GraphValue):
                     requiredPropertyToUpdate.GraphValue= requiredProperty.GraphValue;
                     break;
-                case "ValueIsGlobal":
+                case nameof(RequiredProperty.ValueIsGlobal):
                     requiredPropertyToUpdate.ValueIsGlobal = requiredProperty.ValueIsGlobal;
                     break;
             }

@@ -37,5 +37,6 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("PythonMigrationViewExtension")]
 [assembly: InternalsVisibleTo("LintingViewExtension")]
 [assembly: InternalsVisibleTo("GenerativeDesign.Dynamo.ViewExtension")]
+[assembly: InternalsVisibleTo("GraphMetadataViewExtension")]
 [assembly: InternalsVisibleTo("DSCPython")]
 [assembly: InternalsVisibleTo("DynamoPythonTests")]

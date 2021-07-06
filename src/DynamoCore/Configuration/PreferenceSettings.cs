@@ -427,7 +427,7 @@ namespace Dynamo.Configuration
         /// <summary>
         /// Collection of RequiredProperties, as set in the DynamoSettings file
         /// </summary>
-        public ObservableCollection<RequiredProperty> RequiredProperties
+        internal ObservableCollection<RequiredProperty> RequiredProperties
         {
             get => requiredProperties;
             set

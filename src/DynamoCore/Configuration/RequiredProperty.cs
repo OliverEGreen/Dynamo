@@ -8,7 +8,7 @@ namespace Dynamo.Configuration
     /// A property that appears in the GraphMetadataViewExtension for all graphs, and
     /// is set by the user via the Preferences window. 
     /// </summary>
-    public class RequiredProperty : NotificationObject
+    internal class RequiredProperty : NotificationObject
     {
         private string key;
         private string globalValue;
