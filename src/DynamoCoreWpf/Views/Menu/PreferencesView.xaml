@@ -37,7 +37,7 @@
             <controls:BinaryRadioButtonCheckedConverter x:Key="BinaryRadioButtonCheckedConverter" />
             <controls:ExpandersBindingConverter x:Key="ExpandersBindingConverter" />
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-            <controls:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+            <controls:InverseBooleanConverter x:Key="InverseBooleanConverter" />
 
             <!--  This Template will be used for the controls generated in the Styles list when a new Style is saved  -->
             <DataTemplate x:Key="styleViewItemTemplate">
@@ -867,9 +867,8 @@
                                 x:Name="RequiredPropertiesExpander"
                                 Grid.Row="0"
                                 Header="{x:Static p:Resources.RequiredPropertiesExpanderName}"
-                                IsExpanded="True"
                                 Style="{StaticResource MenuExpanderStyle}">
-                                <Grid>
+                                <Grid Margin="10">
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
@@ -877,26 +876,15 @@
                                     </Grid.RowDefinitions>
                                     <Button
                                         Grid.Row="0"
-                                        Margin="6"
+                                        Width="150"
+                                        Height="25"
                                         HorizontalAlignment="Right"
-                                        IsEnabled="{Binding IsDuplicateKeyWarningVisible, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource InverseBooleanConverter}}"
                                         Command="{Binding AddRequiredPropertyCommand}"
+                                        Content="Add Required Property"
                                         Cursor="Hand"
-                                        ToolTip="{x:Static p:Resources.RequiredPropertiesAddRequiredPropertyToolTip}">
-                                        <Button.Template>
-                                            <ControlTemplate>
-                                                <Image
-                                                    Width="16px"
-                                                    Height="16px"
-                                                    Source="../../UI/Images/add-thick-grey-16px.png" />
-                                            </ControlTemplate>
-                                        </Button.Template>
-                                    </Button>
-                                    <TextBlock
-                                        Grid.Row="0"
-                                        Margin="30,5"
-                                        HorizontalAlignment="Right"
-                                        Text="{x:Static p:Resources.RequiredPropertiesAddRequiredPropertyButtonText}" />
+                                        IsEnabled="{Binding IsDuplicateKeyWarningVisible, UpdateSourceTrigger=PropertyChanged, Converter={StaticResource InverseBooleanConverter}}"
+                                        Style="{StaticResource FlatButtonStyle}"
+                                        ToolTip="{x:Static p:Resources.RequiredPropertiesAddRequiredPropertyToolTip}" />
                                     <TextBlock
                                         x:Name="DuplicateKeyWarningTextBlock"
                                         Grid.Row="1"
@@ -936,13 +924,24 @@
                                                         <RowDefinition Height="Auto" />
                                                     </Grid.RowDefinitions>
                                                     <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="Auto" />
                                                         <ColumnDefinition Width="*" />
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
+                                                    <TextBlock
+                                                        x:Name="RequiredPropertyNameLabel"
+                                                        Grid.Row="0"
+                                                        Grid.Column="0"
+                                                        Width="40"
+                                                        Margin="0,1,0,0"
+                                                        Padding="3"
+                                                        HorizontalAlignment="Stretch"
+                                                        Foreground="{StaticResource PreferencesWindowFontColor}"
+                                                        Text="{x:Static p:Resources.RequiredPropertiesTitle}" />
                                                     <TextBox
                                                         x:Name="RequiredPropertyNameTextBox"
                                                         Grid.Row="0"
-                                                        Grid.Column="0"
+                                                        Grid.Column="1"
                                                         Width="Auto"
                                                         Height="25"
                                                         Margin="0"
@@ -956,7 +955,7 @@
                                                         Text="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                                     <Button
                                                         Grid.Row="0"
-                                                        Grid.Column="1"
+                                                        Grid.Column="2"
                                                         Margin="5,0,22,0"
                                                         HorizontalAlignment="Right"
                                                         Background="Transparent"
@@ -977,7 +976,7 @@
                                                     </Button>
                                                     <Button
                                                         Grid.Row="0"
-                                                        Grid.Column="1"
+                                                        Grid.Column="2"
                                                         Margin="5,0,0,0"
                                                         HorizontalAlignment="Right"
                                                         Background="Transparent"
@@ -993,11 +992,21 @@
                                                         </Button.Template>
                                                     </Button>
                                                     <!--  If the RequiredProperty has its value set globally, this TextBox is visible  -->
+                                                    <TextBlock
+                                                        x:Name="RequiredPropertyValueLabel"
+                                                        Grid.Row="1"
+                                                        Grid.Column="0"
+                                                        Width="40"
+                                                        Margin="0,1,0,0"
+                                                        Padding="3"
+                                                        HorizontalAlignment="Stretch"
+                                                        Foreground="{StaticResource PreferencesWindowFontColor}"
+                                                        Text="{x:Static p:Resources.RequiredPropertiesGlobalValue}"
+                                                        Visibility="{Binding ValueIsGlobal, Converter={StaticResource BooleanToVisibilityConverter}, UpdateSourceTrigger=PropertyChanged}" />
                                                     <TextBox
                                                         x:Name="RequiredPropertyValueTextBox"
                                                         Grid.Row="1"
-                                                        Grid.Column="0"
-                                                        Grid.ColumnSpan="2"
+                                                        Grid.Column="1"
                                                         Width="Auto"
                                                         Height="25"
                                                         Margin="0"

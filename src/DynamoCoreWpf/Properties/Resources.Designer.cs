@@ -5200,7 +5200,25 @@ namespace Dynamo.Wpf.Properties {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Toggles whether this Required Property&apos;s value is set globally for all Dynamo graphs or per-graph..
+        ///   Looks up a localized string similar to Value.
+        /// </summary>
+        public static string RequiredPropertiesGlobalValue {
+            get {
+                return ResourceManager.GetString("RequiredPropertiesGlobalValue", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Title.
+        /// </summary>
+        public static string RequiredPropertiesTitle {
+            get {
+                return ResourceManager.GetString("RequiredPropertiesTitle", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Toggle Global Property..
         /// </summary>
         public static string RequiredPropertiesToggleGlobalValueToolTip {
             get {

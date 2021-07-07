@@ -2453,9 +2453,15 @@ Uninstall the following packages: {0}?</value>
     <value>Deletes this Required Property.</value>
   </data>
   <data name="RequiredPropertiesToggleGlobalValueToolTip" xml:space="preserve">
-    <value>Toggles whether this Required Property's value is set globally for all Dynamo graphs or per-graph.</value>
+	  <value>Toggle Global Property.</value>
   </data>
   <data name="RequiredPropertiesAddRequiredPropertyButtonText" xml:space="preserve">
     <value>Add Required Property</value>
+  </data>
+  <data name="RequiredPropertiesTitle" xml:space="preserve">
+    <value>Title</value>
+  </data>
+  <data name="RequiredPropertiesGlobalValue" xml:space="preserve">
+    <value>Value</value>
   </data>
 </root>

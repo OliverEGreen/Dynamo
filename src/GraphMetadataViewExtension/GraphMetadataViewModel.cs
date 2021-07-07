@@ -136,7 +136,7 @@ namespace Dynamo.GraphMetadata
         /// <summary>
         /// Collection of RequiredProperties
         /// </summary>
-        internal ObservableCollection<RequiredProperty> RequiredProperties
+        public ObservableCollection<RequiredProperty> RequiredProperties
         {
             get => requiredProperties;
 
